@@ -1,0 +1,76 @@
+---
+name: skills-creator
+description: "Creates or adjusts an agent skill in the standard skill format. Turns a request for a skill into a skill folder whose SKILL.md holds the frontmatter, when the skill applies and a numbered procedure, with a template, a format reference and a helper script when each run of the skill produces a file of a fixed form, then registers every skill in the repository's AGENTS.md or CLAUDE.md, creating that file when the repository has neither, and validates the structure. Use only when the user's own words ask to create, scaffold, restructure or adjust a skill. Do not use to run an existing skill, to answer a question about skills that only needs an explanation, or to write agent instructions that are not a skill."
+metadata:
+  id: .skills/skills-creator
+  kind: skill
+  version: 1.0.0
+---
+
+# Skill creation
+
+Carries out one skill creation task: a new skill, or an adjustment of an existing one.
+The [skill format](references/skill-format.md) owns how a skill is laid out, named, stored and registered; the [writing rules](references/writing-rules.md) own how its content is worded.
+This skill owns the order of the steps, the templates and the helper scripts.
+Where a step names a section, that section decides.
+The skill depends on no other framework: a skill it creates carries its own rules, and links to a document of the repository only where that document already owns a rule.
+
+## When to use
+
+- The user's own words ask to create a skill, to turn a way of working into a skill, or to restructure or adjust an existing skill.
+- Not for running a skill that exists, which follows that skill's own `SKILL.md`; not for a question about skills that only needs an explanation, which is answered directly; not for agent instructions that are not a skill, such as the rules of an instruction file, which are edited in that file.
+
+## Resources
+
+| Resource | Use |
+| --- | --- |
+| [`references/skill-format.md`](references/skill-format.md) | Location and naming, the two sizes, frontmatter, body, the resources of a full skill and registration |
+| [`references/writing-rules.md`](references/writing-rules.md) | How the description, the rules and the steps are worded, and the three scenarios the finished skill is re-read against |
+| [`assets/skill-thin-template.md`](assets/skill-thin-template.md) | Template of the `SKILL.md` of a thin skill |
+| [`assets/skill-template.md`](assets/skill-template.md) | Template of the `SKILL.md` of a full skill |
+| [`assets/output-template.md`](assets/output-template.md) | Template of the output template a full skill keeps in `assets/` |
+| [`assets/format-template.md`](assets/format-template.md) | Template of the format reference a full skill keeps in `references/` |
+| [`assets/script-template.py`](assets/script-template.py) | Template of the helper script a full skill keeps in `scripts/` |
+| [`scripts/new_skill.py`](scripts/new_skill.py) | Creates the skill folder from the templates, with the name, the id, the resource file names and the skill path filled in |
+| [`scripts/register_skills.py`](scripts/register_skills.py) | Writes the block that lists every skill into the repository's instruction file, or checks it with `--check` |
+| [`scripts/validate_skill.py`](scripts/validate_skill.py) | Checks the structure of a skill, its links and its registration |
+
+## Procedure
+
+Run the commands from the root of the repository that receives the skill.
+The commands name this skill's folder as `.skills/skills-creator`; when the folder lives elsewhere, use its path instead.
+
+1. **Open the task.** Read the [skill format](references/skill-format.md) and the [writing rules](references/writing-rules.md) in full.
+   Read the repository's instruction file, when it has one, and the `SKILL.md` of every skill already in the skills directory ([Location and naming](references/skill-format.md#location-and-naming)), together in one step.
+2. **Analyze the request.** Settle what one run of the skill carries out, the requests that open it and the nearby requests it must not take, what a run produces, which document owns each decision of the work ([One owner per rule](references/writing-rules.md#one-owner-per-rule)), and the steps of a run.
+   Investigate what the repository and the conversation already answer.
+   Ask only about the missing decisions that change the skill, all of them in one message, and wait for the answers; a request that overlaps an existing skill is one of them ([Description](references/writing-rules.md#description)).
+3. **Choose the size and the name** ([The two sizes](references/skill-format.md#the-two-sizes), [Location and naming](references/skill-format.md#location-and-naming)); for a full skill, also the name of the artifact.
+4. **Scaffold the skill.**
+   When the user asks to adjust an existing skill, skip this step: steps 5 to 9 apply to the files that change.
+
+   ```powershell
+   python -B .skills/skills-creator/scripts/new_skill.py --name <name> --size <thin|full> [--artifact <artifact>] [--skills-dir <dir>]
+   ```
+
+5. **Write the content.** Replace every `<...>` placeholder of `SKILL.md` per the [Body](references/skill-format.md#body) and [Frontmatter](references/skill-format.md#frontmatter) sections and the [writing rules](references/writing-rules.md); a line of the form `<If ...: ...>` stays only when its condition holds.
+   For a full skill, write the [format reference](references/skill-format.md#format-reference) first, then the [output template](references/skill-format.md#output-template), then adapt the [helper script](references/skill-format.md#helper-script) to what a tool can compute, or remove it when there is nothing to compute.
+   Run each script once against a temporary directory and read its output.
+   An adjusted skill gets its `version` bumped per [Frontmatter](references/skill-format.md#frontmatter).
+6. **Register the skills** in the instruction file that [Registration](references/skill-format.md#registration) picks; pass `--file` only when the user names the file:
+
+   ```powershell
+   python -B .skills/skills-creator/scripts/register_skills.py [--skills-dir <dir>] [--file <AGENTS.md|CLAUDE.md>]
+   ```
+
+7. **Validate**, then fix and rerun until the validator passes:
+
+   ```powershell
+   python -B .skills/skills-creator/scripts/validate_skill.py --path <skill folder>
+   ```
+
+8. **Re-read against the three scenarios** of the [writing rules](references/writing-rules.md#re-reading-against-three-scenarios).
+   A scenario that fails goes back to step 5; after a change of the `name` or the `description`, steps 6 and 7 run again.
+9. **Clean up** the temporary directories and files the run created.
+10. **Report** the skill folder and each file written, the instruction file that registers the skill, the result of the validator, the three scenarios read and what remains open.
+    Stop there: the new skill runs only when the user asks for the work it carries out.
