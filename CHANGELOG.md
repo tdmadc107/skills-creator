@@ -3,6 +3,37 @@
 Every notable change to skills-generator is recorded here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+To be released as 2.0.0: the skill moves from `.skills/` to the skills folders of the agent providers, so the installer and the scripts work differently.
+
+### Changed
+
+- The skill and every skill it creates live in the skills folder of each agent provider the project uses, named `skills`, instead of `.skills/`:
+  - `.agents/skills/` for Codex CLI, Antigravity and other agents that read `.agents/` (found by `.agents/`, `.codex/` or `.agent/`);
+  - `.claude/skills/` for Claude Code (`.claude/` or `CLAUDE.md`);
+  - `.cursor/skills/` for Cursor (`.cursor/`);
+  - `.gemini/skills/` for Gemini CLI (`.gemini/` or `GEMINI.md`);
+  - `.github/skills/` for GitHub Copilot (`.github/copilot-instructions.md` or `.github/instructions/`).
+
+  An existing skills folder is used as it is, a missing one is created, and a project that uses no provider gets `.agents/skills/`.
+- With several providers, every skills folder holds a full copy of every skill, identical but for the paths of its own folder.
+  `new_skill.py` creates a skill in every skills folder at once, the procedure and the run evaluation make every change in every copy, and `validate_skill.py` reports a copy that is missing or differs.
+- `npx skills-generator` installs or updates the copy of every provider in use; an update that meets a file changed in any copy changes nothing anywhere unless `--force` is given.
+- When the project has neither `AGENTS.md` nor `CLAUDE.md`, `CLAUDE.md` is created if Claude Code is the only provider in use, otherwise `AGENTS.md`; creating `CLAUDE.md` puts Claude Code in use, so its skills folder gets the skill too.
+- The registration block lists each skill once, linked to its copy in the first skills folder, and names only the skills folders that exist.
+- Records are written next to the copy of the skill that ran, `<skills folder>/.records/`, and `run_record.py check` and `query` read the records of every skills folder together.
+- The scripts find the skills folders themselves; `--skills-dir` of `new_skill.py`, `register_skills.py` and `run_record.py` is repeatable and names other folders instead.
+- The README says to run the installer at the root folder of the project.
+
+### Deprecated
+
+- A copy that version 1.0.0 installed in `.skills/skills-generator/` is reported by the installer and left as it is; agents do not read `.skills/`, so move the skills created there into the skills folders, then delete `.skills/`.
+
+### Removed
+
+- The installer's `--skills-dir` option: the skills folders follow the providers the project uses.
+
 ## [1.0.0] - 2026-11-17
 
 The first release.

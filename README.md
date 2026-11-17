@@ -20,7 +20,7 @@
 `skills-generator` is itself an agent skill: you describe the work in plain words, and your coding agent writes a skill for it.
 
 - 📐 **One format for every skill.** Each skill is a folder whose `SKILL.md` says when it applies and gives a numbered procedure, with a template, a format reference and a helper script when each run produces a file of a fixed form.
-- 📌 **Found by every agent.** Every skill is listed in the repository's `AGENTS.md` or `CLAUDE.md`, whichever it has; when it has neither, `AGENTS.md` is created.
+- 📌 **Found by every agent.** Each skill is copied into the skills folder of every agent provider your project uses (`.claude/skills/`, `.agents/skills/`, `.cursor/skills/`…) and listed in `AGENTS.md` or `CLAUDE.md`.
 - 🔁 **Self-improving.** Each run of a generated skill records its steps and decisions, an evaluation looks for what went wrong, and the skill is fixed at the root cause.
 - ✅ **Checked, not guessed.** A validator checks the structure of every skill, and each new skill is re-read against three scenarios before it is handed over.
 - 🔒 **Safe updates.** Updating the package never overwrites the improvements your runs made, unless you ask for it.
@@ -32,14 +32,29 @@ It calls no model and needs no API key: your agent runs it with the model you al
 
 ## ⚡ Quick Start
 
-At the root of your repository:
+> **Run it at the root folder of your project**, the folder that holds `.git`, `.claude/`, `.agents/` or your `AGENTS.md` / `CLAUDE.md`.
 
 ```powershell
+cd path/to/your-project
 npx skills-generator
 ```
 
-The installer copies the skill into `.skills/skills-generator/` and registers it in `AGENTS.md` or `CLAUDE.md`.
-Commit `.skills/` and the instruction file so the whole team shares the same skills; the run records stay out of Git through `.skills/.records/.gitignore`.
+The installer looks for the agent providers your project uses and copies the skill into the skills folder of each one:
+
+| Your project has | The skill goes to |
+| --- | --- |
+| `.agents/`, `.codex/` or `.agent/` (Codex CLI, Antigravity…) | `.agents/skills/skills-generator/` |
+| `.claude/` or `CLAUDE.md` (Claude Code) | `.claude/skills/skills-generator/` |
+| `.cursor/` (Cursor) | `.cursor/skills/skills-generator/` |
+| `.gemini/` or `GEMINI.md` (Gemini CLI) | `.gemini/skills/skills-generator/` |
+| `.github/copilot-instructions.md` or `.github/instructions/` (GitHub Copilot) | `.github/skills/skills-generator/` |
+| None of them | `.agents/skills/skills-generator/`, created |
+
+- 📁 An existing `skills` folder is used as it is; a missing one is created, named `skills`.
+- 🧩 With several providers, each one gets a full copy, and every skill you create or improve later is kept identical in every copy.
+- 📝 The skills are also listed in `AGENTS.md` or `CLAUDE.md`, whichever the project has; with neither, `CLAUDE.md` is created when Claude Code is your only provider, `AGENTS.md` otherwise.
+
+Commit the skills folders and the instruction file so the whole team shares the same skills; the run records stay out of Git through the `.records/.gitignore` of each skills folder.
 Then ask your agent in plain words:
 
 | You want to | Example request |
@@ -62,14 +77,15 @@ A new skill runs only when you ask for the work it carries out.
 | 📦 Full | `SKILL.md`, `assets/`, `references/` and, when a tool has something to compute, `scripts/` | Each run produces a file of a fixed form that later work reads |
 
 ```text
-.skills/
+.claude/skills/                         one skills folder per provider, each with the same skills
   release-notes/
     SKILL.md                            frontmatter, When to use, Resources, Procedure
     assets/release-note-template.md     template of one release note
     references/release-note-format.md   how a release note is laid out, named and stored
     scripts/new_release_note.py         creates a release note from the template
   skills-generator/                     this skill, which every generated skill relies on
-  .records/                             the records of the runs, kept out of Git
+  .records/                             the records of the runs made from this folder, kept out of Git
+.agents/skills/                         the same skills, for the providers that read .agents/
 ```
 
 Every procedure opens the run with the record tool and ends with the same three steps: **Clean up → Evaluate and record → Report**.
@@ -89,9 +105,9 @@ Open the run ──▶ the skill's own steps ──▶ Clean up ──▶ Evalua
 - 🧭 **Fixed at the cause.** Each issue is classified as `instruction`, `ineffective_fix`, `input` or `execution`, and the file that owns the cause is fixed: the skill, its template, another skill, or `skills-generator` itself.
 - 🎯 **Only what recurs.** A wrong decision changes a skill only when it affects how the skill runs and can happen again; a mistake specific to one run is fixed in the output and noted.
 - 🛑 **Asks before it loosens.** A change that would weaken a safety rule, or that lies outside the skills directory, waits for your decision.
-- 🗂️ **Searchable history.** Records are JSON lines in `.skills/.records/<skill>/<date>.jsonl`, and earlier fixes are looked up before a new one is made.
+- 🗂️ **Searchable history.** Records are JSON lines in `<skills folder>/.records/<skill>/<date>.jsonl`, read together across the skills folders, and earlier fixes are looked up before a new one is made.
 
-The whole contract lives in [`run-evaluation.md`](.skills/skills-generator/references/run-evaluation.md).
+The whole contract lives in [`run-evaluation.md`](.agents/skills/skills-generator/references/run-evaluation.md).
 
 ---
 
@@ -99,16 +115,17 @@ The whole contract lives in [`run-evaluation.md`](.skills/skills-generator/refer
 
 | Command | What it does |
 | --- | --- |
-| `npx skills-generator` | Installs the skill; once installed, updates it and keeps the files your runs changed |
+| `npx skills-generator` | Installs the skill for every provider of the project; once installed, updates every copy and keeps the files your runs changed |
 | `npx skills-generator@latest` | The same with the newest version, so that `npx` does not reuse the one it cached |
 
-Options: `--skills-dir <dir>` (install elsewhere than `.skills`), `--create CLAUDE.md` (the file to create when the repository has neither), `--force` (also replace the files changed in the repository), `--root <dir>`, `--version`, `--help`.
+Options: `--create <AGENTS.md|CLAUDE.md>` (the file to create when the project has neither), `--force` (also replace the files changed in the project), `--root <dir>` (the root folder of the project, when you run it from elsewhere), `--version`, `--help`.
 
-When an update meets a file your runs improved, it lists the file and changes nothing: merge it by hand, or run again with `--force` after committing to keep a copy.
-The install writes `.skills/skills-generator/.install.json`, the hashes that updates compare with; commit it with the skill.
+When an update meets a file your runs improved, in any copy, it lists the file and changes nothing: merge it by hand in every copy, or run again with `--force` after committing to keep a copy.
+Each copy holds an `.install.json`, the hashes that updates compare with; commit it with the skill.
+A provider you add later gets its copy on the next run.
 
 The installer needs Node 18 or later; the skill's scripts need Python 3.9 or later and nothing outside the standard library.
-Without Node, copy `.skills/skills-generator/` into your repository and run `python -B .skills/skills-generator/scripts/register_skills.py` from its root.
+Without Node, copy `.agents/skills/skills-generator/` into the skills folder of each provider and run `python -B <skills folder>/skills-generator/scripts/register_skills.py` at the root folder of the project.
 
 ---
 
@@ -118,12 +135,12 @@ The agent runs them for you; each prints one JSON object with `passed` and exits
 
 | Script | What it does |
 | --- | --- |
-| `new_skill.py --name <name> --size <thin\|full> [--artifact <name>]` | Creates a skill folder from the templates |
+| `new_skill.py --name <name> --size <thin\|full> [--artifact <name>]` | Creates the skill from the templates in every skills folder |
 | `register_skills.py [--create <AGENTS.md\|CLAUDE.md>] [--check]` | Lists every skill in the instruction file, or checks that the list is current |
-| `validate_skill.py --path <skill or skills directory>` | Checks the structure, the links and the registration of a skill |
+| `validate_skill.py --path <skill or skills folder>` | Checks the structure, the links, the copies and the registration of a skill |
 | `run_record.py <start\|append\|check\|query>` | Opens a run, writes its record, checks the stored records, looks earlier ones up |
 
-All of them live in `.skills/skills-generator/scripts/` and take `--root <dir>` and `--skills-dir <dir>` where they apply.
+They live in `scripts/` of each copy of `skills-generator`, find the skills folders of the project themselves, and take `--root <dir>`; `--skills-dir <dir>` names other folders instead.
 
 ---
 
@@ -131,10 +148,10 @@ All of them live in `.skills/skills-generator/scripts/` and take `--root <dir>` 
 
 | To learn about | Read |
 | --- | --- |
-| The procedure of one skill creation task | [`SKILL.md`](.skills/skills-generator/SKILL.md) |
-| Layout, naming, frontmatter, body, registration | [Skill format](.skills/skills-generator/references/skill-format.md) |
-| How descriptions, rules and steps are worded | [Writing rules](.skills/skills-generator/references/writing-rules.md) |
-| Records, evaluation and improvements | [Run evaluation](.skills/skills-generator/references/run-evaluation.md) |
+| The procedure of one skill creation task | [`SKILL.md`](.agents/skills/skills-generator/SKILL.md) |
+| Layout, naming, frontmatter, body, registration | [Skill format](.agents/skills/skills-generator/references/skill-format.md) |
+| How descriptions, rules and steps are worded | [Writing rules](.agents/skills/skills-generator/references/writing-rules.md) |
+| Records, evaluation and improvements | [Run evaluation](.agents/skills/skills-generator/references/run-evaluation.md) |
 | What changed in each version | [`CHANGELOG.md`](CHANGELOG.md) |
 | Tests, releases and repository protection | [`MAINTAINING.md`](MAINTAINING.md) |
 

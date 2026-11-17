@@ -13,7 +13,7 @@ Write it as one line in three parts, in this order:
 3. `Do not use ...`: the nearby requests the skill must not take, each of them work that another skill or a direct answer owns.
 
 Name the requests by kind of situation, not by keywords: a description that lists trigger words opens the skill on a mention and misses the same request in other words.
-Two skills of one skills directory never take the same request; when a new skill overlaps an existing one, settle the boundary and state it in both descriptions.
+Two skills of one repository never take the same request; when a new skill overlaps an existing one, settle the boundary and state it in both descriptions.
 
 ## One owner per rule
 

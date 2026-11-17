@@ -1,6 +1,6 @@
 {
   "name": "skills-generator",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "An agent skill that creates other skills in one standard format, registers them in AGENTS.md or CLAUDE.md, and improves them from the records of their runs.",
   "keywords": [
     "agent-skills",
@@ -18,7 +18,7 @@
   },
   "files": [
     "bin/",
-    ".skills/skills-generator/",
+    ".agents/skills/skills-generator/",
     "CHANGELOG.md",
     "!**/__pycache__/",
     "!**/.install.json"

@@ -5,16 +5,30 @@ How the content of a skill is worded belongs to the [writing rules](writing-rule
 
 ## Location and naming
 
-- Skills directory: the directory the user names; when the user names none, the directory where the repository already keeps skills of this format; when there is none, `.skills/` at the repository root.
-- Skill folder: `<skills directory>/<name>/`.
-  The `name` is ASCII kebab-case (lowercase letters, digits and single hyphens), at most 64 characters, and unique in the skills directory.
+- Skills folders: the skills folder of every agent provider the repository uses, at its root, so that each provider finds the skills where it looks for them.
+  A provider is in use when one of the paths below, or its skills folder, exists; a skills folder that is missing is created, named `skills`.
+  When the repository uses no provider, the skills folder is `.agents/skills/`.
+
+  | Provider | In use when the root has | Skills folder |
+  | --- | --- | --- |
+  | Codex CLI, Antigravity and other agents that read `.agents/` | `.agents/`, `.codex/` or `.agent/` | `.agents/skills/` |
+  | Claude Code | `.claude/` or `CLAUDE.md` | `.claude/skills/` |
+  | Cursor | `.cursor/` | `.cursor/skills/` |
+  | Gemini CLI | `.gemini/` or `GEMINI.md` | `.gemini/skills/` |
+  | GitHub Copilot | `.github/copilot-instructions.md` or `.github/instructions/` | `.github/skills/` |
+
+  The user may name other folders instead; the helper scripts take them with `--skills-dir`.
+- Copies: every skills folder holds every skill, and the copies of a skill are identical but for the paths that name their own folder, such as `metadata.id` and the commands.
+  A skill is created in every skills folder at once, and every change to a skill, an improvement included, is made in every copy; the validator reports a copy that is missing or differs.
+- Skill folder: `<skills folder>/<name>/`.
+  The `name` is ASCII kebab-case (lowercase letters, digits and single hyphens), at most 64 characters, and unique among the skills.
   It names the work the skill carries out; skills that belong to one family share a prefix.
 - Entry point: `SKILL.md` in the skill folder.
   An agent reads it first and reads every other file of the skill only when a step needs it.
 - Creating a skill never overwrites an existing one (the helper script refuses); an existing skill is adjusted by editing its files.
-- Every skill depends on the `skills-generator` folder of the same repository: its steps run the record tool there and link to its run evaluation.
-  A skill is therefore created by the copy of `skills-generator` that lives in the repository, and is moved to another repository together with it.
-- The records of the runs live outside the skill folders, in `<skills directory>/.records/` ([Record](run-evaluation.md#record)).
+- Every skill depends on the copy of `skills-generator` in its own skills folder: its steps run the record tool there and link to its run evaluation.
+  A skill is therefore created by a copy of `skills-generator` installed in the repository, and is moved to another repository together with it.
+- The records of the runs live outside the skill folders, in `<skills folder>/.records/` of the copy that ran ([Record](run-evaluation.md#record)).
 
 ## The two sizes
 
@@ -45,7 +59,7 @@ A full skill names its resources after the artifact, in kebab-case for Markdown 
 | --- | --- |
 | `name` | The folder name |
 | `description` | One line of at most 1024 characters, in double quotes, in the three parts of the [writing rules](writing-rules.md#description) |
-| `metadata.id` | Path of the skill folder from the repository root, for example `.skills/<name>` |
+| `metadata.id` | Path of this copy of the skill from the repository root, for example `.agents/skills/<name>` |
 | `metadata.kind` | `skill` |
 | `metadata.version` | `<major>.<minor>.<patch>`, starting at `1.0.0` |
 
@@ -110,8 +124,8 @@ Every skill is registered in the repository's instruction file, the file the hos
 - **Which file.** `AGENTS.md` when the repository root has it.
   `CLAUDE.md` when the root has it, unless `AGENTS.md` exists and `CLAUDE.md` loads it, through an `@AGENTS.md` import or as a link to it: such a `CLAUDE.md` already brings the block from `AGENTS.md`.
   A `CLAUDE.md` that only names `AGENTS.md` in a sentence does not load it, so both files carry the block when both exist and `CLAUDE.md` does not import `AGENTS.md`.
-  When the root has neither, create `AGENTS.md`, or `CLAUDE.md` when the user asks for that file.
-- **What.** One block between the markers `<!-- skills:start -->` and `<!-- skills:end -->`: a `Skills` heading, the instruction to read and follow the `SKILL.md` of the skill whose description matches the request, and a table with one row per skill of the skills directory, its link and its description.
+  When the root has neither, create `CLAUDE.md` when Claude Code is the only provider in use, otherwise `AGENTS.md`, unless the user names the file.
+- **What.** One block between the markers `<!-- skills:start -->` and `<!-- skills:end -->`: a `Skills` heading, the instruction to read and follow the `SKILL.md` of the skill whose description matches the request, and a table with one row per skill, linked to its copy in the first skills folder, with its description.
 - **When.** After a skill is created, after its `name` or `description` changes, and after a skill is removed.
 - **How.** The block is generated from the `SKILL.md` files by `scripts/register_skills.py` and is never edited by hand.
   The script replaces the block when the file has one, appends it otherwise, and leaves the rest of the file as it is.

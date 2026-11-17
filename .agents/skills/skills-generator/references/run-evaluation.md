@@ -3,7 +3,7 @@
 The `skills-generator` skill owns how a run of a skill is recorded, how the record is evaluated and how the skill is improved from it.
 Every skill of the [skill format](skill-format.md) applies this file through the first step of its procedure and the step **Evaluate and record**, the one before the report; the skill's own steps own the work in between.
 
-The commands below name the `skills-generator` folder as `.skills/skills-generator`; a skill's own steps give the path that holds in its repository.
+The commands below name the `skills-generator` folder as `.agents/skills/skills-generator`; a skill's own steps give the path of the copy in its own skills folder.
 
 The purpose is one loop: a run records the decisions it made and how each step went, the evaluation looks for the decisions and steps that went wrong, and each wrong decision whose cause lies in a skill improves that skill, or the component that owns the cause, so the next run does not repeat it.
 
@@ -22,13 +22,13 @@ The first step of a procedure runs `start` and keeps the returned `run_ref`: the
 This is the version of the rules the run applies, and the record carries it unchanged, even when the run later improves the skill.
 
 ```powershell
-python -B .skills/skills-generator/scripts/run_record.py start --skill <skill folder>
+python -B .agents/skills/skills-generator/scripts/run_record.py start --skill <skill folder>
 ```
 
 ## Notes of the run
 
 From the first step on, the run notes what the record needs, as it happens and not from memory at the end.
-The notes live in the agent's working context, or in a temporary file outside the skills directory when the run is long; the cleanup step keeps them, because the evaluation reads them.
+The notes live in the agent's working context, or in a temporary file outside the skills folders when the run is long; the cleanup step keeps them, because the evaluation reads them.
 
 - **Steps.** For each step the record covers: its status, as the [Record](#record) section lists them, and in one sentence what was done or why not.
 - **Decisions.** Each choice that shaped the output, with the step that made it and its basis: a case chosen among the cases a step names, an assumption, a departure from a step, a question asked and the user's answer, a scope left out.
@@ -56,7 +56,7 @@ Each issue names its `subject` (the decision, or the step as `STEP-NN`), the `pr
 Before classifying, look the earlier records up in one call, repeating the flags for every issue of the run:
 
 ```powershell
-python -B .skills/skills-generator/scripts/run_record.py query --issue-key <key> --rule <file#section>
+python -B .agents/skills/skills-generator/scripts/run_record.py query --issue-key <key> --rule <file#section>
 ```
 
 Classify by evidence, not by how often the issue repeated:
@@ -84,15 +84,15 @@ The record's `summary` states it in one sentence, with the reason it is below th
 Every issue that meets the threshold gets an improvement within the run, applied by the agent that evaluates:
 
 1. Find the file that owns the cause and read the files that point to it: the skill's `SKILL.md`, its format reference, its template or its script, another skill whose output was the wrong input, or a file of `skills-generator` itself when the cause is the format, a template or a tool every skill shares.
-2. Edit that one file per the [writing rules](writing-rules.md): replace the wrong passage in its general form, without piling a reminder on top of it, and do not copy the fix into files that only point to the owner.
-3. Bump the `version` of each edited skill per [Frontmatter](skill-format.md#frontmatter).
-4. Register the skills again when a `name` or a `description` changed, and run the validator on each edited skill ([Registration](skill-format.md#registration)).
+2. Edit that one file, in every copy of the skill ([Location and naming](skill-format.md#location-and-naming)), per the [writing rules](writing-rules.md): replace the wrong passage in its general form, without piling a reminder on top of it, and do not copy the fix into files that only point to the owner.
+3. Bump the `version` of each edited skill, in every copy, per [Frontmatter](skill-format.md#frontmatter).
+4. Register the skills again when a `name` or a `description` changed, and run the validator on each edited skill, which also reports a copy the change missed ([Registration](skill-format.md#registration)).
 5. Re-read the edited part against the [three scenarios](writing-rules.md#re-reading-against-three-scenarios), with the run that showed the issue as the first one.
 
 Two kinds of improvement are not applied; the record holds them as `pending_user` and the final response asks the user:
 
 - `safety`: the change would loosen, narrow, remove or work around a rule that limits deleting, overwriting, committing, pushing, deploying, sending or another action that is hard to undo or reaches outside the repository, a rule that protects secrets, or a rule that requires the user's decision.
-- `repository`: the file that owns the cause lies outside the skills directory, such as the repository's instruction file outside its generated block or its documentation.
+- `repository`: the file that owns the cause lies outside the skills folders, such as the repository's instruction file outside its generated block or its documentation.
 
 ## Record
 
@@ -101,13 +101,13 @@ The record is one JSON object, written with `append`, which adds `schema`, `reco
 A run whose record is rejected is not complete.
 
 ```powershell
-python -B .skills/skills-generator/scripts/run_record.py append --input <JSON file>
+python -B .agents/skills/skills-generator/scripts/run_record.py append --input <JSON file>
 ```
 
-The input file is temporary: write it outside the skills directory.
+The input file is temporary: write it outside the skills folders.
 Once `append` passes, the step removes that file, the notes file when there is one, and every temporary file the evaluation created; the cleanup step ran before them.
 
-Records are stored at `<skills directory>/.records/<skill>/<YYYY-MM-DD>.jsonl`, one record per line.
+Records are stored at `<skills folder>/.records/<skill>/<YYYY-MM-DD>.jsonl`, next to the copy of the skill that ran, one record per line; `check` and `query` read the records of every skills folder together.
 They describe the user's projects, so the tool creates `.records/.gitignore` with the single line `*` when that file does not exist: the records stay on the local machine until the user changes that file, which the tool never touches again.
 
 | Field | Content |

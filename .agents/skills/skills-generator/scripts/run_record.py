@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Open a run of a skill, write the run's record, check the stored records and look earlier records up.
 
-Records live in <skills directory>/.records/<skill>/<YYYY-MM-DD>.jsonl, one JSON object per line, append-only.
+Records live in <skills folder>/.records/<skill>/<YYYY-MM-DD>.jsonl, one JSON object per line, append-only, next to the
+copy of the skill that ran; `check` and `query` read the records of every skills folder of the repository together.
 The record contract (when a run records, what each field means, the causes, the improvements) is owned by
 ../references/run-evaluation.md; this tool only enforces the structure of that contract.
 """
@@ -18,7 +19,7 @@ from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _common import RECORDS, SEMVER, SKILLS_DIR, SLUG, SkillError, emit, read_skill, recorded_steps, resolve, shown  # noqa: E402
+from _common import RECORDS, SEMVER, SLUG, SkillError, emit, read_skill, recorded_steps, resolve, shown, skills_dirs  # noqa: E402
 
 SCHEMA = "skill-record/v1"
 FIELDS = ("run_ref", "request", "outcome", "steps", "decisions", "evaluation", "issues", "fixes", "supersedes")
@@ -67,11 +68,18 @@ def start(root: Path, skill_arg: str) -> dict[str, Any]:
 # ---------- reading ----------
 
 
-def read_records(root: Path, skills_dir: Path) -> tuple[list[dict[str, Any]], list[str]]:
-    """Every stored record in file order, plus an error for each line that cannot be read."""
+def record_files(dirs: list[Path]) -> list[Path]:
+    return [path for skills_dir in dirs for path in sorted((skills_dir / RECORDS).glob("*/*.jsonl"))]
+
+
+def read_records(root: Path, dirs: list[Path]) -> tuple[list[dict[str, Any]], list[str]]:
+    """Every stored record of the given skills folders, oldest first, plus an error for each line that cannot be read.
+
+    The records of one folder are in file order; records of several folders are merged by the time they were written.
+    """
 
     records, errors = [], []
-    for path in sorted((skills_dir / RECORDS).glob("*/*.jsonl")):
+    for path in record_files(dirs):
         for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
             where = f"{shown(path, root)}:{number}"
             try:
@@ -83,6 +91,8 @@ def read_records(root: Path, skills_dir: Path) -> tuple[list[dict[str, Any]], li
                 errors.append(f"{where}: a record must be a JSON object")
                 continue
             records.append({**data, "_location": where})
+    # A stable sort keeps the file order of records written within the same second.
+    records.sort(key=lambda record: str(record.get("recorded_at", "")))
     return records, errors
 
 
@@ -255,8 +265,8 @@ def check_references(data: dict[str, Any], earlier: dict[str, dict[str, Any]]) -
     return errors
 
 
-def check_stored(root: Path, skills_dir: Path) -> tuple[list[dict[str, Any]], list[str]]:
-    records, errors = read_records(root, skills_dir)
+def check_stored(root: Path, dirs: list[Path]) -> tuple[list[dict[str, Any]], list[str]]:
+    records, errors = read_records(root, dirs)
     earlier: dict[str, dict[str, Any]] = {}
     for record in records:
         where = record["_location"]
@@ -288,7 +298,8 @@ def append(root: Path, data: Any) -> dict[str, Any]:
     if meta.get("name") != ref["skill"]:
         raise SkillError(f"run_ref.path names the skill `{meta.get('name')}`, not `{ref['skill']}`")
     skills_dir = skill.parent
-    stored, _ = check_stored(root, skills_dir)
+    dirs = folders(root, None, extra=skills_dir)
+    stored, _ = check_stored(root, dirs)
     errors = check_references(data, {record["record_id"]: record for record in stored if isinstance(record.get("record_id"), str)})
     if errors:
         return {"passed": False, "errors": errors}
@@ -308,22 +319,29 @@ def append(root: Path, data: Any) -> dict[str, Any]:
     with target.open("a", encoding="utf-8", newline="\n") as handle:
         handle.write(json.dumps(record, ensure_ascii=False) + "\n")
     result = {"passed": True, "record_id": record_id, "path": shown(target, root)}
-    stored_errors = check_stored(root, skills_dir)[1]
+    stored_errors = check_stored(root, dirs)[1]
     if stored_errors:
         result.update({"passed": False, "errors": stored_errors})
     return result
 
 
-def check(root: Path, skills_dir: Path) -> dict[str, Any]:
-    records, errors = check_stored(root, skills_dir)
+def folders(root: Path, named: list[str] | None, extra: Path | None = None) -> list[Path]:
+    """The skills folders whose records are read together: the ones named, or every provider's, plus the one given."""
+
+    dirs = [resolve(name, root) for name in skills_dirs(root, named)]
+    return dirs + [extra] if extra is not None and extra not in dirs else dirs
+
+
+def check(root: Path, dirs: list[Path]) -> dict[str, Any]:
+    records, errors = check_stored(root, dirs)
     return {"passed": not errors, "records": len(records), **({"errors": errors} if errors else {})}
 
 
-def query(root: Path, skills_dir: Path, skill: str | None, issue_keys: list[str], rules: list[str], last: int | None,
+def query(root: Path, dirs: list[Path], skill: str | None, issue_keys: list[str], rules: list[str], last: int | None,
           everything: bool) -> dict[str, Any]:
     """Earlier records, oldest first: of one skill, or holding an issue with one of the keys or one of the rules."""
 
-    records, _ = read_records(root, skills_dir)
+    records, _ = read_records(root, dirs)
     superseded = {record.get("supersedes") for record in records}
     found = []
     for record in records:
@@ -349,7 +367,7 @@ def main() -> int:
     writing.add_argument("--input", help="UTF-8 file holding the record as JSON; default: standard input")
     for name, text_ in (("check", "check every stored record"), ("query", "list earlier records")):
         command = commands.add_parser(name, parents=[shared], help=text_)
-        command.add_argument("--skills-dir", default=SKILLS_DIR, help=f"directory that holds the skills; default: {SKILLS_DIR}")
+        command.add_argument("--skills-dir", action="append", help="a skills folder, relative to the root; repeatable; default: the skills folder of every provider the repository uses")
         if name == "query":
             command.add_argument("--skill", help="only the records of the skill with this name")
             command.add_argument("--issue-key", action="append", default=[], help="records holding an issue with this key; repeatable")
@@ -365,9 +383,9 @@ def main() -> int:
             raw = Path(args.input).read_text(encoding="utf-8") if args.input else sys.stdin.read()
             result = append(root, json.loads(raw))
         elif args.command == "check":
-            result = check(root, resolve(args.skills_dir, root))
+            result = check(root, folders(root, args.skills_dir))
         else:
-            result = query(root, resolve(args.skills_dir, root), args.skill, args.issue_key, args.rule, args.last, args.all)
+            result = query(root, folders(root, args.skills_dir), args.skill, args.issue_key, args.rule, args.last, args.all)
     except (SkillError, OSError, ValueError) as exc:
         result = {"passed": False, "errors": [str(exc)]}
     return emit(result)

@@ -15,7 +15,18 @@ SLUG = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
 SEMVER = re.compile(r"\d+\.\d+\.\d+")
 NAME_LIMIT = 64
 DESCRIPTION_LIMIT = 1024
-SKILLS_DIR = ".skills"
+# The agent providers whose skills folder receives every skill, in the order their folders are listed.
+# A provider is in use when one of its `detect` paths, or its skills folder, exists at the repository root.
+# bin/skills-generator.mjs holds the same table for the installer, and a test keeps the two equal.
+PROVIDERS = (
+    {"id": "agents", "label": "Codex CLI, Antigravity and other agents that read .agents/", "skills": ".agents/skills", "detect": (".agents", ".codex", ".agent")},
+    {"id": "claude", "label": "Claude Code", "skills": ".claude/skills", "detect": (".claude", "CLAUDE.md")},
+    {"id": "cursor", "label": "Cursor", "skills": ".cursor/skills", "detect": (".cursor",)},
+    {"id": "gemini", "label": "Gemini CLI", "skills": ".gemini/skills", "detect": (".gemini", "GEMINI.md")},
+    {"id": "copilot", "label": "GitHub Copilot", "skills": ".github/skills", "detect": (".github/copilot-instructions.md", ".github/instructions")},
+)
+# The skills folder created when the repository uses no provider yet.
+DEFAULT_SKILLS_DIR = ".agents/skills"
 # The instruction files a skill is registered in, in the order they are looked for.
 INSTRUCTION_FILES = ("AGENTS.md", "CLAUDE.md")
 RESOURCE_FOLDERS = ("assets", "references", "scripts")
@@ -158,6 +169,30 @@ def recorded_steps(body: str, where: str) -> int:
     return len(names) - len(CLOSING_STEPS)
 
 
+def posix_dir(value: str) -> str:
+    """A skills folder as the scripts name it: forward slashes, no leading `./` and no trailing slash."""
+
+    text = value.replace("\\", "/").strip()
+    while text.startswith("./"):
+        text = text[2:]
+    return text.rstrip("/")
+
+
+def skills_dirs(root: Path, named: list[str] | None = None) -> list[str]:
+    """The skills folders of the repository, relative to its root: the ones named, or every provider's in use.
+
+    When the repository uses no provider, the result is the default folder, which may not exist yet.
+    """
+
+    if named:
+        found = [posix_dir(name) for name in named]
+    else:
+        found = [provider["skills"] for provider in PROVIDERS
+                 if any((root / path).exists() for path in (*provider["detect"], provider["skills"]))]
+    unique = list(dict.fromkeys(found))
+    return unique or [DEFAULT_SKILLS_DIR]
+
+
 def skill_folders(skills_dir: Path) -> list[Path]:
     """Every folder of the skills directory that holds a SKILL.md, by name."""
 
@@ -166,47 +201,59 @@ def skill_folders(skills_dir: Path) -> list[Path]:
     return sorted(folder for folder in skills_dir.iterdir() if (folder / "SKILL.md").is_file())
 
 
-def registration_block(root: Path, skills_dir: Path) -> str:
-    """The block an instruction file carries: one row per skill of the skills directory."""
+def registration_block(root: Path, dirs: list[Path]) -> str:
+    """The block an instruction file carries: one row per skill, linked to its copy in the first folder that holds it."""
 
-    rows = []
-    for folder in skill_folders(skills_dir):
-        meta, _ = read_skill(folder)
-        name, description = meta.get("name"), meta.get("description")
-        if not isinstance(name, str) or not isinstance(description, str) or not name or not description:
-            raise SkillError(f"{folder.name}/SKILL.md: name and description are required to register the skill")
-        cell = " ".join(description.split()).replace("|", "\\|")
-        rows.append(f"| [`{name}`]({shown(folder / 'SKILL.md', root)}) | {cell} |")
+    # A provider's skills folder that does not exist yet holds no skill to list and is not named.
+    dirs = [skills_dir for skills_dir in dirs if skills_dir.is_dir()]
+    rows: dict[str, str] = {}
+    for skills_dir in dirs:
+        for folder in skill_folders(skills_dir):
+            meta, _ = read_skill(folder)
+            name, description = meta.get("name"), meta.get("description")
+            if not isinstance(name, str) or not isinstance(description, str) or not name or not description:
+                raise SkillError(f"{shown(folder, root)}/SKILL.md: name and description are required to register the skill")
+            if name not in rows:
+                cell = " ".join(description.split()).replace("|", "\\|")
+                rows[name] = f"| [`{name}`]({shown(folder / 'SKILL.md', root)}) | {cell} |"
+    names = ", ".join(f"`{shown(skills_dir, root)}/`" for skills_dir in dirs)
     if not rows:
-        raise SkillError(f"{shown(skills_dir, root)} holds no skill to register")
-    folder_name = shown(skills_dir, root)
+        raise SkillError("the skills folders hold no skill to register")
     return "\n".join([
         BLOCK_START,
         "## Skills",
         "",
-        f"This block is generated from the `SKILL.md` files in `{folder_name}/`: change those files, then register the skills again; do not edit it by hand.",
+        f"This block is generated from the `SKILL.md` files in {names}: change those files, then register the skills again; do not edit it by hand.",
+        "Every skills folder holds the same skills; each row links to one copy.",
         "",
         "When a request matches the description of a skill below, read that skill's `SKILL.md` in full and follow it; relative paths in that file resolve from its own folder.",
         "When no skill matches, work without one.",
         "",
         "| Skill | Description |",
         "| --- | --- |",
-        *rows,
+        *[rows[name] for name in sorted(rows)],
         BLOCK_END,
     ])
 
 
-def registration_targets(root: Path, create: str = INSTRUCTION_FILES[0]) -> list[Path]:
+def registration_targets(root: Path, create: str | None = None) -> list[Path]:
     """The instruction files that carry the block, per the registration rule of the skill format.
 
     `create` names the file to create when the root has none of them; it changes nothing once one exists.
+    Without it, a repository whose only provider is Claude Code gets CLAUDE.md, and any other gets AGENTS.md.
     """
 
     agents, claude = (root / name for name in INSTRUCTION_FILES)
     targets = [agents] if agents.is_file() else []
     if claude.is_file() and not (targets and loads_agents_md(claude, agents)):
         targets.append(claude)
-    return targets or [root / create]
+    if targets:
+        return targets
+    if create is None:
+        in_use = [provider["id"] for provider in PROVIDERS
+                  if any((root / path).exists() for path in (*provider["detect"], provider["skills"]))]
+        create = "CLAUDE.md" if in_use == ["claude"] else "AGENTS.md"
+    return [root / create]
 
 
 def loads_agents_md(claude: Path, agents: Path) -> bool:

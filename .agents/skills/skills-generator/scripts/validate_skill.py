@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Check the structure of a skill against the skill format: frontmatter, sections, resources, links, registration.
+"""Check a skill against the skill format: frontmatter, sections, resources, links, copies and registration.
 
 The rules are owned by ../references/skill-format.md; this script only reports where a skill departs from them.
 It checks structure, never the quality of the wording: that is re-read per ../references/writing-rules.md.
---path names one skill folder, or a skills directory to check every skill in it.
+--path names one skill folder, or a skills folder to check every skill in it. When that folder is one of the skills
+folders of the repository's providers, every other one must hold the same skill, identical but for its own path.
 """
 
 from __future__ import annotations
@@ -15,8 +16,8 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _common import (DESCRIPTION_LIMIT, HEADING, INSTRUCTION_FILES, NAME_LIMIT, recorded_steps, RECORD_TOOL, RESOURCE_FOLDERS, SEMVER, SLUG, SkillError, emit,  # noqa: E402
-                     procedure_steps, read_skill, resolve, sections, shown, skill_folders, without_fences)
+from _common import (DESCRIPTION_LIMIT, HEADING, NAME_LIMIT, recorded_steps, RECORD_TOOL, RESOURCE_FOLDERS, SEMVER, SLUG, SkillError, emit,  # noqa: E402
+                     posix_dir, procedure_steps, read_skill, resolve, sections, shown, skill_folders, skills_dirs, without_fences)
 from register_skills import register  # noqa: E402
 
 CODE_SPAN = re.compile(r"`[^`\n]*`")
@@ -155,21 +156,66 @@ def check_skill(skill: Path, root: Path) -> list[str]:
     return [f"{skill.name}: {error}" for error in errors]
 
 
+def copy_files(skill: Path) -> dict[str, bytes]:
+    """The files of one copy of a skill, without caches and the installer's manifest, which differ between copies."""
+
+    return {path.relative_to(skill).as_posix(): path.read_bytes() for path in sorted(skill.rglob("*"))
+            if path.is_file() and "__pycache__" not in path.parts and path.name != ".install.json"}
+
+
+def normalized(data: bytes, skills_dir: str, names: tuple[str, ...]) -> bytes:
+    """A file of a copy with the paths into its own skills folder replaced, so copies in different folders compare equal."""
+
+    for name in names:
+        data = data.replace(f"{skills_dir}/{name}".encode("utf-8"), f"<skills>/{name}".encode("utf-8"))
+    return data
+
+
+def check_copies(skill: Path, root: Path, dirs: list[str]) -> list[str]:
+    """Every skills folder holds the skill, and every copy equals this one but for the paths into its own folder."""
+
+    own = posix_dir(shown(skill.parent, root))
+    names = (skill.name, "skills-generator")
+    reference = {rel: normalized(data, own, names) for rel, data in copy_files(skill).items()}
+    errors = []
+    for other in dirs:
+        if other == own:
+            continue
+        copy = resolve(other, root) / skill.name
+        if not (copy / "SKILL.md").is_file():
+            errors.append(f"{other}/{skill.name} is missing: every skills folder holds every skill")
+            continue
+        theirs = {rel: normalized(data, other, names) for rel, data in copy_files(copy).items()}
+        differ = sorted(rel for rel in set(reference) | set(theirs) if reference.get(rel) != theirs.get(rel))
+        if differ:
+            errors.append(f"the copy in {other}/ differs from the copy in {own}/ in {', '.join(differ)}: apply every change to every copy")
+    return errors
+
+
 def validate(root: Path, path: Path, skip_registration: bool) -> list[str]:
     if not path.is_dir():
         raise SkillError(f"{shown(path, root)} is not a directory")
     skills = [path] if (path / "SKILL.md").is_file() else skill_folders(path)
     if not skills:
         raise SkillError(f"{shown(path, root)} is neither a skill folder nor a directory of skills")
-    errors = [error for skill in skills for error in check_skill(skill, root)]
+    parent = posix_dir(shown(skills[0].parent, root))
+    dirs = skills_dirs(root)
+    # A skill outside the providers' skills folders is checked on its own, against its own folder.
+    in_providers = parent in dirs
+    errors = []
+    for skill in skills:
+        found = check_skill(skill, root)
+        if in_providers:
+            found += [f"{skill.name}: {error}" for error in check_copies(skill, root, dirs)]
+        errors += found
     if not skip_registration:
-        errors += register(root, str(skills[0].parent), INSTRUCTION_FILES[0], check=True).get("errors", [])
+        errors += register(root, None if in_providers else [parent], None, check=True).get("errors", [])
     return errors
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--path", required=True, help="a skill folder, or a skills directory to check every skill in it; relative to the root or absolute")
+    parser.add_argument("--path", required=True, help="a skill folder, or a skills folder to check every skill in it; relative to the root or absolute")
     parser.add_argument("--skip-registration", action="store_true", help="do not check that the instruction file lists the skills")
     parser.add_argument("--root", type=Path, default=Path.cwd(), help="root of the repository (default: the current directory)")
     args = parser.parse_args()
