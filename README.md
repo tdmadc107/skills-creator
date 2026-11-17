@@ -117,6 +117,7 @@ The checks that `protect-main.json` requires are the job names of [`ci.yml`](.gi
 
 Also set, under **Settings**:
 
-- **Actions → General → Fork pull request workflows from outside collaborators:** require approval for all outside collaborators, so a stranger's pull request runs no workflow until the owner approves it.
+- **Actions → General → Approval for running fork pull request workflows from contributors:** require approval for all external contributors, so the pull request of anyone outside the repository runs no workflow until the owner approves it.
+  Leave **Require actions to be pinned to a full-length commit SHA** unchecked: the workflows name actions by version tag, such as `actions/checkout@v6`.
 - **Actions → General → Workflow permissions:** read repository contents and packages permissions.
 - **Environments → npm:** add the owner as a required reviewer, and limit deployment to the tags `v*`, so a release waits for the owner's approval.
