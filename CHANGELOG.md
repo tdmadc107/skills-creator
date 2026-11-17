@@ -3,9 +3,9 @@
 Every notable change to skills-generator is recorded here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.0] - 2026-11-17
 
-The first release, to be published as 1.0.0.
+The first release.
 
 ### Added
 
