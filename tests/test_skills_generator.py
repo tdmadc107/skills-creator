@@ -94,7 +94,7 @@ class PackageTests(unittest.TestCase):
         self.assertEqual(code, 0, result)
 
     def test_repository_links_resolve(self):
-        for source in (REPO / "README.md", REPO / "AGENTS.md", REPO / "MAINTAINING.md"):
+        for source in (REPO / "README.md", REPO / "AGENTS.md", REPO / "MAINTAINING.md", REPO / "CHANGELOG.md"):
             for target in LINK.findall(FENCE.sub("", source.read_text(encoding="utf-8"))):
                 if re.match(r"[a-z]+:", target):
                     continue
@@ -111,6 +111,15 @@ class PackageTests(unittest.TestCase):
         checks = next(rule["parameters"]["required_status_checks"] for rule in ruleset["rules"] if rule["type"] == "required_status_checks")
         self.assertEqual(sorted(check["context"] for check in checks), sorted(jobs))
         self.assertEqual(len(jobs), 5)
+
+    def test_the_changelog_describes_the_current_version(self):
+        # Until a release, the entries wait under Unreleased; publish.yml then requires a dated heading for the version.
+        text = (REPO / "CHANGELOG.md").read_text(encoding="utf-8")
+        version = re.search(r"^  version: (\S+)$", (SKILL / "SKILL.md").read_text(encoding="utf-8"), re.M).group(1)
+        headings = re.findall(r"(?m)^## \[([^\]]+)\](?: - (\d{4}-\d{2}-\d{2}))?$", text)
+        self.assertTrue(headings, "the changelog has no version heading")
+        self.assertIn(headings[0][0], ("Unreleased", version), "the newest heading is Unreleased or the current version")
+        self.assertTrue(all(date for name, date in headings if name != "Unreleased"), "every released version has a date")
 
     def test_scripts_postpone_annotations(self):
         # Postponed annotations keep `X | None` hints valid on Python 3.9, the oldest version the scripts support.

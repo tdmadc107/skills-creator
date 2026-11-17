@@ -18,9 +18,13 @@ The first command tests the skill and its scripts; the second tests the npm inst
 
 - [`ci.yml`](.github/workflows/ci.yml) runs the Python tests on Python 3.9 and 3.13 and the installer tests on Node 18, 22 and 24, on every push and pull request.
 - [`publish.yml`](.github/workflows/publish.yml) publishes `skills-generator` to npm when a tag `v<major>.<minor>.<patch>` is pushed.
-  It runs the CI first, then checks that the tag equals the `version` of `package.json`, that this version equals the `metadata.version` of `SKILL.md`, that the tagged commit is on `main` and that the version is not on npm yet.
+  It runs the CI first, then checks that the tag equals the `version` of `package.json`, that this version equals the `metadata.version` of `SKILL.md`, that [`CHANGELOG.md`](CHANGELOG.md) has the heading `## [<version>] - <YYYY-MM-DD>`, that the tagged commit is on `main` and that the version is not on npm yet.
 
-To release, bump the version in both `package.json` and `.skills/skills-generator/SKILL.md`, merge to `main`, then tag that commit:
+To release:
+
+1. Bump the version in both `package.json` and `.skills/skills-generator/SKILL.md`, unless the change that needed it already did.
+2. In `CHANGELOG.md`, rename `## [Unreleased]` to `## [<version>] - <YYYY-MM-DD>`, the release date, and start a new empty `## [Unreleased]` above it when more changes are on the way.
+3. Merge to `main`, then tag that commit:
 
 ```powershell
 git tag v<version>

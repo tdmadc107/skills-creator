@@ -19,6 +19,7 @@
   "files": [
     "bin/",
     ".skills/skills-generator/",
+    "CHANGELOG.md",
     "!**/__pycache__/",
     "!**/.install.json"
   ],

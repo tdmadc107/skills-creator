@@ -135,6 +135,7 @@ All of them live in `.skills/skills-generator/scripts/` and take `--root <dir>` 
 | Layout, naming, frontmatter, body, registration | [Skill format](.skills/skills-generator/references/skill-format.md) |
 | How descriptions, rules and steps are worded | [Writing rules](.skills/skills-generator/references/writing-rules.md) |
 | Records, evaluation and improvements | [Run evaluation](.skills/skills-generator/references/run-evaluation.md) |
+| What changed in each version | [`CHANGELOG.md`](CHANGELOG.md) |
 | Tests, releases and repository protection | [`MAINTAINING.md`](MAINTAINING.md) |
 
 ---
