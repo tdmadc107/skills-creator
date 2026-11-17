@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create the folder of a new skill from the skills-creator templates, with the computed values filled in.
+"""Create the folder of a new skill from the skills-generator templates, with the computed values filled in.
 
 The layout and naming rules are owned by ../references/skill-format.md; this script fills only what a tool can
 compute (the name, the id, the resource file names, the paths of the skill and of the record tool) and leaves every <...> placeholder to

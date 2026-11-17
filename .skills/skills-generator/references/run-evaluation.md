@@ -1,9 +1,9 @@
 # Run evaluation
 
-The `skills-creator` skill owns how a run of a skill is recorded, how the record is evaluated and how the skill is improved from it.
+The `skills-generator` skill owns how a run of a skill is recorded, how the record is evaluated and how the skill is improved from it.
 Every skill of the [skill format](skill-format.md) applies this file through the first step of its procedure and the step **Evaluate and record**, the one before the report; the skill's own steps own the work in between.
 
-The commands below name the `skills-creator` folder as `.skills/skills-creator`; a skill's own steps give the path that holds in its repository.
+The commands below name the `skills-generator` folder as `.skills/skills-generator`; a skill's own steps give the path that holds in its repository.
 
 The purpose is one loop: a run records the decisions it made and how each step went, the evaluation looks for the decisions and steps that went wrong, and each wrong decision whose cause lies in a skill improves that skill, or the component that owns the cause, so the next run does not repeat it.
 
@@ -22,7 +22,7 @@ The first step of a procedure runs `start` and keeps the returned `run_ref`: the
 This is the version of the rules the run applies, and the record carries it unchanged, even when the run later improves the skill.
 
 ```powershell
-python -B .skills/skills-creator/scripts/run_record.py start --skill <skill folder>
+python -B .skills/skills-generator/scripts/run_record.py start --skill <skill folder>
 ```
 
 ## Notes of the run
@@ -56,7 +56,7 @@ Each issue names its `subject` (the decision, or the step as `STEP-NN`), the `pr
 Before classifying, look the earlier records up in one call, repeating the flags for every issue of the run:
 
 ```powershell
-python -B .skills/skills-creator/scripts/run_record.py query --issue-key <key> --rule <file#section>
+python -B .skills/skills-generator/scripts/run_record.py query --issue-key <key> --rule <file#section>
 ```
 
 Classify by evidence, not by how often the issue repeated:
@@ -83,7 +83,7 @@ The record's `summary` states it in one sentence, with the reason it is below th
 
 Every issue that meets the threshold gets an improvement within the run, applied by the agent that evaluates:
 
-1. Find the file that owns the cause and read the files that point to it: the skill's `SKILL.md`, its format reference, its template or its script, another skill whose output was the wrong input, or a file of `skills-creator` itself when the cause is the format, a template or a tool every skill shares.
+1. Find the file that owns the cause and read the files that point to it: the skill's `SKILL.md`, its format reference, its template or its script, another skill whose output was the wrong input, or a file of `skills-generator` itself when the cause is the format, a template or a tool every skill shares.
 2. Edit that one file per the [writing rules](writing-rules.md): replace the wrong passage in its general form, without piling a reminder on top of it, and do not copy the fix into files that only point to the owner.
 3. Bump the `version` of each edited skill per [Frontmatter](skill-format.md#frontmatter).
 4. Register the skills again when a `name` or a `description` changed, and run the validator on each edited skill ([Registration](skill-format.md#registration)).
@@ -101,7 +101,7 @@ The record is one JSON object, written with `append`, which adds `schema`, `reco
 A run whose record is rejected is not complete.
 
 ```powershell
-python -B .skills/skills-creator/scripts/run_record.py append --input <JSON file>
+python -B .skills/skills-generator/scripts/run_record.py append --input <JSON file>
 ```
 
 The input file is temporary: write it outside the skills directory.

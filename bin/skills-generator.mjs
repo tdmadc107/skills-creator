@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Installs the skills-creator skill into a repository, registers it in AGENTS.md or CLAUDE.md, and updates it later
+// Installs the skills-generator skill into a repository, registers it in AGENTS.md or CLAUDE.md, and updates it later
 // without overwriting the improvements that the evaluation of its runs made in that repository. Needs only Node;
 // the registration runs the skill's own Python script, which needs Python 3.9 or later.
 
@@ -11,25 +11,24 @@ import { fileURLToPath } from "node:url";
 
 const SOURCE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PACKAGE = JSON.parse(fs.readFileSync(path.join(SOURCE, "package.json"), "utf8"));
-const SKILL = "skills-creator";
+const SKILL = "skills-generator";
 const SKILL_SOURCE = path.join(SOURCE, ".skills", SKILL);
 // Written into the installed skill folder: the package, its version and the hash of every file as installed.
 const MANIFEST = ".install.json";
 const INSTRUCTION_FILES = ["AGENTS.md", "CLAUDE.md"];
 const SKIPPED = new Set(["__pycache__", MANIFEST]);
 
-const USAGE = `Usage: npx ${PACKAGE.name} <command> [options]
+const USAGE = `Usage: npx ${PACKAGE.name} [options]
 
-Commands:
-  init      copy the skill into <skills-dir>/${SKILL}/ and register it
-  update    replace the installed skill with this version; files changed in the repository are kept unless --force
-  version   print the version of this package
+Run from the root of a repository. The first run copies the skill into <skills-dir>/${SKILL}/ and registers it;
+a later run updates it to this version and keeps the files changed in the repository unless --force.
 
 Options:
   --root <dir>          root of the repository (default: the current directory)
   --skills-dir <dir>    directory that holds the skills, relative to the root (default: .skills)
   --create <file>       AGENTS.md or CLAUDE.md: the file to create when the root has neither (default: AGENTS.md)
-  --force               update: also replace the files changed in the repository
+  --force               when updating, also replace the files changed in the repository
+  --version             print the version of this package
   --help                print this help`;
 
 class UsageError extends Error {}
@@ -43,13 +42,13 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--help" || arg === "-h") opts.command = "help";
+    else if (arg === "--version" || arg === "-v") opts.command = "version";
     else if (arg === "--force") opts.force = true;
     else if (arg === "--root") opts.root = valueOf(++i, arg);
     else if (arg === "--skills-dir") opts.skillsDir = valueOf(++i, arg);
     else if (arg === "--create") opts.create = valueOf(++i, arg);
     else if (arg.startsWith("--")) throw new UsageError(`unknown option ${arg}`);
-    else if (!opts.command) opts.command = arg;
-    else throw new UsageError(`unexpected argument ${arg}`);
+    else throw new UsageError(`unexpected argument ${arg}; the package takes options only`);
   }
   if (!INSTRUCTION_FILES.includes(opts.create)) throw new UsageError(`--create must be one of ${INSTRUCTION_FILES.join(", ")}`);
   if (path.isAbsolute(opts.skillsDir)) throw new UsageError("--skills-dir must be relative to the root, because the skill names its own path from there");
@@ -140,11 +139,11 @@ function register(opts) {
   return true;
 }
 
-function init(opts) {
+function install(opts) {
   const folder = path.join(opts.root, opts.skillsDir, SKILL);
   if (fs.existsSync(folder)) {
-    const how = readManifest(folder) ? `run \`npx ${PACKAGE.name} update\`` : "move it away first, because it was not installed by this package";
-    throw new Error(`${path.relative(opts.root, folder) || folder} already exists; ${how}`);
+    // Reached only when the folder has no manifest of this package.
+    throw new Error(`${path.relative(opts.root, folder) || folder} exists but was not installed by ${PACKAGE.name}; move it away, then run again`);
   }
   const files = packagedFiles(opts.skillsDir);
   for (const [rel, data] of Object.entries(files)) writeFile(path.join(folder, rel), data);
@@ -153,10 +152,8 @@ function init(opts) {
   register(opts);
 }
 
-function update(opts) {
+function update(opts, manifest) {
   const folder = path.join(opts.root, opts.skillsDir, SKILL);
-  const manifest = readManifest(folder);
-  if (!manifest) throw new Error(`${opts.skillsDir}/${SKILL}/ was not installed by ${PACKAGE.name}; run \`npx ${PACKAGE.name} init\` first`);
   const files = packagedFiles(opts.skillsDir);
   const installed = new Set(filesOf(folder));
   // A file is changed in the repository when it differs from what the last install wrote, or was added there.
@@ -165,7 +162,7 @@ function update(opts) {
   if (blocking.length && !opts.force) {
     throw new Error(`these files of ${opts.skillsDir}/${SKILL}/ changed in the repository and differ from version ${PACKAGE.version}:\n`
       + blocking.map((rel) => `  ${rel}`).join("\n")
-      + "\nmerge them by hand, or run again with --force to replace them (commit first to keep a copy)");
+      + "\nmerge them by hand, or run again with --force to replace them (commit first to keep a copy); nothing was changed");
   }
   let written = 0;
   let removed = 0;
@@ -185,6 +182,13 @@ function update(opts) {
   register(opts);
 }
 
+/** Install the skill when the repository has none; update it when this package installed it before. */
+function installOrUpdate(opts) {
+  const manifest = readManifest(path.join(opts.root, opts.skillsDir, SKILL));
+  if (manifest) update(opts, manifest);
+  else install(opts);
+}
+
 function main(argv) {
   let opts;
   try {
@@ -194,11 +198,9 @@ function main(argv) {
     return 2;
   }
   try {
-    if (!opts.command || opts.command === "help") console.log(USAGE);
+    if (opts.command === "help") console.log(USAGE);
     else if (opts.command === "version") console.log(PACKAGE.version);
-    else if (opts.command === "init") init(opts);
-    else if (opts.command === "update") update(opts);
-    else throw new UsageError(`unknown command ${opts.command}`);
+    else installOrUpdate(opts);
   } catch (error) {
     if (error instanceof UsageError) {
       console.error(`error: ${error.message}\n\n${USAGE}`);

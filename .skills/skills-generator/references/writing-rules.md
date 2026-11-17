@@ -1,6 +1,6 @@
 # Writing rules
 
-The `skills-creator` skill owns how the content of a skill is worded.
+The `skills-generator` skill owns how the content of a skill is worded.
 How a skill is laid out, named, stored and registered belongs to the [skill format](skill-format.md).
 
 ## Description

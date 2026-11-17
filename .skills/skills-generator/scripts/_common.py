@@ -1,4 +1,4 @@
-"""Shared code of the skills-creator scripts: reading a skill, its sections, the names and the registration block.
+"""Shared code of the skills-generator scripts: reading a skill, its sections, the names and the registration block.
 
 The rules these helpers apply are owned by ../references/skill-format.md; this module only reads and computes.
 """

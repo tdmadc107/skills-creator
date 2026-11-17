@@ -1,6 +1,6 @@
 # Skill format
 
-The `skills-creator` skill owns how a skill is laid out, named, stored and registered.
+The `skills-generator` skill owns how a skill is laid out, named, stored and registered.
 How the content of a skill is worded belongs to the [writing rules](writing-rules.md); how a run of a skill is recorded, evaluated and turned into improvements belongs to [Run evaluation](run-evaluation.md).
 
 ## Location and naming
@@ -12,8 +12,8 @@ How the content of a skill is worded belongs to the [writing rules](writing-rule
 - Entry point: `SKILL.md` in the skill folder.
   An agent reads it first and reads every other file of the skill only when a step needs it.
 - Creating a skill never overwrites an existing one (the helper script refuses); an existing skill is adjusted by editing its files.
-- Every skill depends on the `skills-creator` folder of the same repository: its steps run the record tool there and link to its run evaluation.
-  A skill is therefore created by the copy of `skills-creator` that lives in the repository, and is moved to another repository together with it.
+- Every skill depends on the `skills-generator` folder of the same repository: its steps run the record tool there and link to its run evaluation.
+  A skill is therefore created by the copy of `skills-generator` that lives in the repository, and is moved to another repository together with it.
 - The records of the runs live outside the skill folders, in `<skills directory>/.records/` ([Record](run-evaluation.md#record)).
 
 ## The two sizes
@@ -63,7 +63,7 @@ The body has these five parts, in this order, and no level-two section other tha
    When the steps point to sections of other documents, the paragraph ends with the sentence that those sections decide.
 3. **`## When to use`.** One list item for the requests that open the skill, and one for the nearby requests it must not take, each with where that work goes instead.
 4. **`## Resources`.** A table with the columns `Resource` and `Use`: one row per file of `assets/`, `references/` and `scripts/`, each linked, and one row per tool outside the skill that a step runs.
-   Every skill has the row of the record tool, `scripts/run_record.py` of `skills-creator`, linked by its relative path.
+   Every skill has the row of the record tool, `scripts/run_record.py` of `skills-generator`, linked by its relative path.
    A file whose name starts with an underscore is shared code of the scripts and gets no row.
 5. **`## Procedure`.** The steps of one run, numbered from 1.
    Each step starts with its name in bold, then says what to do and links to the section that owns the rule it applies.

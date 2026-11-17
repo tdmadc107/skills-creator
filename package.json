@@ -1,6 +1,6 @@
 {
-  "name": "@tdmadc107/skills-creator",
-  "version": "1.3.1",
+  "name": "skills-generator",
+  "version": "2.0.0",
   "description": "An agent skill that creates other skills in one standard format, registers them in AGENTS.md or CLAUDE.md, and improves them from the records of their runs.",
   "keywords": [
     "agent-skills",
@@ -14,11 +14,11 @@
   "license": "MIT",
   "type": "module",
   "bin": {
-    "skills-creator": "bin/skills-creator.mjs"
+    "skills-generator": "bin/skills-generator.mjs"
   },
   "files": [
     "bin/",
-    ".skills/skills-creator/",
+    ".skills/skills-generator/",
     "!**/__pycache__/",
     "!**/.install.json"
   ],

@@ -1,4 +1,4 @@
-"""Check the skills-creator skill as a package and run its scripts against temporary repositories."""
+"""Check the skills-generator skill as a package and run its scripts against temporary repositories."""
 from __future__ import annotations
 
 import json
@@ -12,7 +12,7 @@ import unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-SKILL = REPO / ".skills" / "skills-creator"
+SKILL = REPO / ".skills" / "skills-generator"
 SCRIPTS = SKILL / "scripts"
 PLACEHOLDER = re.compile(r"<(?!!--)[^<>\n]+>")
 LINK = re.compile(r"\[[^\]]*\]\(([^)\s]+)\)")
@@ -101,6 +101,17 @@ class PackageTests(unittest.TestCase):
                 with self.subTest(source=source.name, target=target):
                     self.assertTrue((REPO / target.partition("#")[0]).exists())
 
+    def test_the_main_ruleset_requires_exactly_the_ci_jobs(self):
+        # A required check that no job reports blocks every pull request, so the ruleset follows the job names of ci.yml.
+        ci = (REPO / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        jobs = []
+        for name, axis, values in re.findall(r"name: ([^\n]+?)\$\{\{ matrix\.(\w+) \}\}.*?\n\s+\2: \[(.*?)\]", ci, re.S):
+            jobs += [f"{name}{value.strip().strip(chr(34))}" for value in values.split(",")]
+        ruleset = json.loads((REPO / ".github/rulesets/protect-main.json").read_text(encoding="utf-8"))
+        checks = next(rule["parameters"]["required_status_checks"] for rule in ruleset["rules"] if rule["type"] == "required_status_checks")
+        self.assertEqual(sorted(check["context"] for check in checks), sorted(jobs))
+        self.assertEqual(len(jobs), 5)
+
     def test_scripts_postpone_annotations(self):
         # Postponed annotations keep `X | None` hints valid on Python 3.9, the oldest version the scripts support.
         for script in sorted(SCRIPTS.glob("*.py")) + [SKILL / "assets" / "script-template.py"]:
@@ -109,11 +120,11 @@ class PackageTests(unittest.TestCase):
 
 
 class NewSkillTests(Repository):
-    """The scaffolder runs from the copy of skills-creator inside the repository that receives the new skill."""
+    """The scaffolder runs from the copy of skills-generator inside the repository that receives the new skill."""
 
     def setUp(self):
         super().setUp()
-        self.creator = self.root / ".skills" / "skills-creator"
+        self.creator = self.root / ".skills" / "skills-generator"
         shutil.copytree(SKILL, self.creator, ignore=shutil.ignore_patterns("__pycache__"))
 
     def new_skill(self, *args: str) -> tuple[int, dict]:
@@ -137,8 +148,8 @@ class NewSkillTests(Repository):
         # The scaffolded skill opens its run with the record tool, at the path the template filled in.
         text = (self.root / result["path"] / "SKILL.md").read_text(encoding="utf-8")
         command = re.search(r"python -B (\S+run_record\.py) start --skill (\S+)", text)
-        self.assertEqual(command.groups(), (".skills/skills-creator/scripts/run_record.py", ".skills/release-notes"))
-        self.assertIn("](../skills-creator/scripts/run_record.py)", text)
+        self.assertEqual(command.groups(), (".skills/skills-generator/scripts/run_record.py", ".skills/release-notes"))
+        self.assertIn("](../skills-generator/scripts/run_record.py)", text)
         code, opened = run("run_record.py", self.root, "start", "--skill", command.group(2))
         self.assertEqual((code, opened["run_ref"]["skill"], opened["run_ref"]["recorded_steps"]), (0, "release-notes", 4), opened)
 
@@ -177,7 +188,7 @@ class NewSkillTests(Repository):
             with self.subTest(args=args):
                 code, result = self.new_skill(*args)
                 self.assertEqual((code, result["passed"]), (1, False))
-                self.assertEqual([path.name for path in (self.root / ".skills").iterdir()], ["skills-creator"])
+                self.assertEqual([path.name for path in (self.root / ".skills").iterdir()], ["skills-generator"])
         self.assertEqual(self.new_skill("--name", "report", "--size", "thin")[0], 0)
         before = (self.root / ".skills/report/SKILL.md").read_text(encoding="utf-8")
         self.assertEqual(self.new_skill("--name", "report", "--size", "full", "--artifact", "note")[0], 1)
@@ -300,7 +311,7 @@ class RecordTests(Repository):
                  "problem": "The step does not say which inputs to read.", "rule": ".skills/work/SKILL.md#procedure", "evidence": "Step 1."}
         found.update(issue)
         fix = {"id": "FIX-01", "issues": ["ISSUE-01"], "status": "applied", "files": [{"path": ".skills/work/SKILL.md", "section": "Procedure"}],
-               "summary": "Step 1 lists the inputs.", "checks": ["python -B .skills/skills-creator/scripts/validate_skill.py --path .skills/work"]}
+               "summary": "Step 1 lists the inputs.", "checks": ["python -B .skills/skills-generator/scripts/validate_skill.py --path .skills/work"]}
         return self.record(evaluation={"mode": "agent", "result": "issues"}, issues=[found], fixes=[fix])
 
     def append(self, data: dict) -> tuple[int, dict]:

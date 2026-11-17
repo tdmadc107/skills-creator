@@ -42,7 +42,7 @@ jobs:
           node --input-type=module -e '
             import fs from "node:fs";
             const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
-            const skill = fs.readFileSync(".skills/skills-creator/SKILL.md", "utf8").match(/^  version: (\S+)$/m)?.[1];
+            const skill = fs.readFileSync(".skills/skills-generator/SKILL.md", "utf8").match(/^  version: (\S+)$/m)?.[1];
             const tag = process.env.TAG;
             const fail = (message) => { console.error(`::error::${message}`); process.exit(1); };
             if (!/^v\d+\.\d+\.\d+$/.test(tag)) fail(`the tag ${tag} is not of the form v<major>.<minor>.<patch>`);
