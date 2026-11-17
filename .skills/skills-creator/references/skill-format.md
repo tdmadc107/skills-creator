@@ -12,13 +12,16 @@ How the content of a skill is worded belongs to the [writing rules](writing-rule
 - Entry point: `SKILL.md` in the skill folder.
   An agent reads it first and reads every other file of the skill only when a step needs it.
 - Creating a skill never overwrites an existing one (the helper script refuses); an existing skill is adjusted by editing its files.
+- Every skill depends on the `skills-creator` folder of the same repository: its steps run the record tool there and link to its run evaluation.
+  A skill is therefore created by the copy of `skills-creator` that lives in the repository, and is moved to another repository together with it.
+- The records of the runs live outside the skill folders, in `<skills directory>/.records/` ([Record](run-evaluation.md#record)).
 
 ## The two sizes
 
 | Size | Files | Choose when |
 | --- | --- | --- |
 | Thin | `SKILL.md` only | The skill only orders the steps of a kind of work: a run produces no file of a fixed form, or another document owns that form |
-| Full | `SKILL.md`, `assets/`, `references/`, `scripts/` | Each run produces a file of a fixed form, the artifact, that later work reads |
+| Full | `SKILL.md`, `assets/`, `references/` and, when a tool has something to compute or check, `scripts/` | Each run produces a file of a fixed form, the artifact, that later work reads |
 
 A full skill names its resources after the artifact, in kebab-case for Markdown files and with underscores for scripts:
 
@@ -33,9 +36,7 @@ A full skill names its resources after the artifact, in kebab-case for Markdown 
 - The template and its format reference always come together.
 - A script exists only for what a tool can compute or check.
   When a skill has nothing of that kind, remove the script, its folder and its row in the Resources table.
-- Every skill, thin or full, depends on the `skills-creator` folder of the same repository: its steps run the record tool there and link to its run evaluation, so a skill is moved to another repository together with `skills-creator`.
 - A resource folder that exists holds at least one file, and the skill folder holds no other folder.
-- The records of the runs live outside the skill folders, in `<skills directory>/.records/` ([Record](run-evaluation.md#record)).
 - Knowledge that belongs to one repository lives in that repository's own documentation, not in a skill.
 
 ## Frontmatter
@@ -55,7 +56,7 @@ Every edit of a skill bumps its `version`: the patch number for wording that cha
 
 ## Body
 
-The body has one level-one title and these level-two sections, in this order, and no other level-two section.
+The body has these five parts, in this order, and no level-two section other than the three named below.
 
 1. **Title.** The name of the work, not the skill ID.
 2. **Opening paragraph.** One sentence that says what one run carries out, then who owns what: the documents that own the decisions, and what the skill itself owns (the order of the steps; for a full skill also the artifact format and the helper script).
@@ -98,7 +99,7 @@ A script in `scripts/` follows these conventions:
 - A module docstring that says what the script does and names the reference that owns its rules; the script fills only what a tool can compute and leaves every `<...>` placeholder to the agent.
 - Arguments through `argparse`, with `--root` for the repository root, so that a test can run it against a temporary directory.
 - Inputs are checked before anything is written, and one bad input writes nothing.
-- It never overwrites a file.
+- A script that creates a file refuses when that file exists.
 - It prints one JSON object with `passed`, the paths it wrote relative to the root, or `errors`, and exits with 0 when `passed` is true and 1 otherwise.
 
 ## Registration
@@ -106,8 +107,8 @@ A script in `scripts/` follows these conventions:
 Every skill is registered in the repository's instruction file, the file the host loads in every session, so that an agent finds the skill whatever directory the host looks for skills in.
 
 - **Which file.** `AGENTS.md` when the repository root has it.
-  `CLAUDE.md` when the root has it and it does not name `AGENTS.md`; a `CLAUDE.md` that names `AGENTS.md` already loads the block from there.
-  Both files, when both exist and neither loads the other.
+  `CLAUDE.md` when the root has it, unless `AGENTS.md` exists and `CLAUDE.md` names it: such a `CLAUDE.md` already loads the block from `AGENTS.md`.
+  So both files carry the block when both exist and `CLAUDE.md` does not name `AGENTS.md`.
   When the root has neither, create `AGENTS.md`, or `CLAUDE.md` when the user asks for that file.
 - **What.** One block between the markers `<!-- skills:start -->` and `<!-- skills:end -->`: a `Skills` heading, the instruction to read and follow the `SKILL.md` of the skill whose description matches the request, and a table with one row per skill of the skills directory, its link and its description.
 - **When.** After a skill is created, after its `name` or `description` changes, and after a skill is removed.

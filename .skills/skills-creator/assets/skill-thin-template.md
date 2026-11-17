@@ -38,7 +38,7 @@ Run the commands from the repository root.
 
 2. **<Step name>.** <What to do, when it is done, and the section that owns the rule the step applies>.
 3. **Self-verify.** <The check of the output against the request that the agent can perform; what is fixed before reporting>.
-4. **Evaluate and record.** The run is evaluated, in a separate agent when the host can create one, and each issue that meets the threshold improves the skill within the run ([Evaluating the run]({{creator_rel}}/references/run-evaluation.md#evaluating-the-run), [Applying an improvement]({{creator_rel}}/references/run-evaluation.md#applying-an-improvement)); then exactly one record is written, which `append` also checks ([Record]({{creator_rel}}/references/run-evaluation.md#record)):
+4. **Evaluate and record.** Have the run evaluated ([Evaluating the run]({{creator_rel}}/references/run-evaluation.md#evaluating-the-run)) and its issues improved ([Applying an improvement]({{creator_rel}}/references/run-evaluation.md#applying-an-improvement)), then write exactly one record ([Record]({{creator_rel}}/references/run-evaluation.md#record)):
 
    ```powershell
    python -B {{creator_path}}/scripts/run_record.py append --input <JSON file>

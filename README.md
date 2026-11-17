@@ -1,7 +1,7 @@
 # skills-creator
 
 A skill that creates other skills, in one standard format: a folder whose `SKILL.md` says when the skill applies and gives a numbered procedure, with a template, a format reference and a helper script when each run of the skill produces a file of a fixed form.
-The format is the one the skills of the PIRL framework follow, taken on its own: `skills-creator` depends on no framework, and the skills it creates carry their own rules.
+The format is drawn from the skills of the PIRL framework and stands on its own: `skills-creator` depends on no framework, and a skill it creates carries the rules of its own work.
 
 Every skill it creates is registered in the repository's `AGENTS.md` or `CLAUDE.md`, whichever the repository has; when it has neither, `AGENTS.md` is created.
 
@@ -38,14 +38,14 @@ tests/                           tests of the scripts and of the skill itself
 
 The scripts need Python 3.9 or later and nothing outside the standard library.
 
-The skills it creates run the record tool of this folder and link to its run evaluation, so they stay in the same skills directory as `skills-creator`.
+The skills it creates run the record tool of this folder and link to its run evaluation, so `skills-creator` is copied into each repository that uses it, and the skills stay next to it.
 Records are written to `.skills/.records/<skill>/<YYYY-MM-DD>.jsonl` and are ignored by Git through `.skills/.records/.gitignore`, which the tool creates once and never changes afterwards: edit that file to share the records with a team.
 
 ## The scripts on their own
 
 ```powershell
 python -B .skills/skills-creator/scripts/new_skill.py --name <name> --size <thin|full> [--artifact <artifact>] [--skills-dir <dir>]
-python -B .skills/skills-creator/scripts/register_skills.py [--skills-dir <dir>] [--file <AGENTS.md|CLAUDE.md>] [--check]
+python -B .skills/skills-creator/scripts/register_skills.py [--skills-dir <dir>] [--create <AGENTS.md|CLAUDE.md>] [--check]
 python -B .skills/skills-creator/scripts/validate_skill.py --path <skill folder or skills directory> [--skip-registration]
 python -B .skills/skills-creator/scripts/run_record.py start --skill <skill folder>
 python -B .skills/skills-creator/scripts/run_record.py append --input <JSON file>

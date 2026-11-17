@@ -24,7 +24,7 @@ SCHEMA = "skill-record/v1"
 FIELDS = ("run_ref", "request", "outcome", "steps", "decisions", "evaluation", "issues", "fixes", "supersedes")
 RUN_REF = ("skill", "path", "version", "digest", "steps", "started_at")
 OUTCOMES = ("completed", "blocked", "failed")
-STEP_STATUSES = ("done", "skipped", "blocked", "failed", "not_reached")
+STEP_STATUSES = ("done", "skipped", "blocked", "failed", "not_reached", "pending")
 MODES = ("agent", "self")
 RESULTS = ("clean", "issues")
 CAUSES = ("instruction", "ineffective_fix", "input", "execution")
@@ -165,6 +165,9 @@ def check_record(data: dict[str, Any]) -> list[str]:
     for index, item in enumerate(steps, 1):
         choice(item.get("status"), STEP_STATUSES, f"steps[{index}].status", errors)
         text(item.get("note"), f"steps[{index}].note", errors)
+    statuses = [item.get("status") for item in steps]
+    if "pending" in statuses and (statuses[0] == "pending" or set(statuses[statuses.index("pending"):]) != {"pending"}):
+        errors.append("steps: `pending` marks only the steps that follow the writing of the record, so it ends the list")
 
     def step_in_range(value: Any) -> bool:
         return type(value) is int and 1 <= value <= (total or value)
@@ -341,14 +344,15 @@ def query(root: Path, skills_dir: Path, skill: str | None, issue_keys: list[str]
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--root", type=Path, default=Path.cwd(), help="root of the repository (default: the current directory)")
+    shared = argparse.ArgumentParser(add_help=False)
+    shared.add_argument("--root", type=Path, default=Path.cwd(), help="root of the repository (default: the current directory)")
     commands = parser.add_subparsers(dest="command", required=True)
-    opening = commands.add_parser("start", help="pin the version of the skill a run applies; writes nothing")
+    opening = commands.add_parser("start", parents=[shared], help="pin the version of the skill a run applies; writes nothing")
     opening.add_argument("--skill", required=True, help="path of the skill folder, relative to the root or absolute")
-    writing = commands.add_parser("append", help="check one record and store it")
+    writing = commands.add_parser("append", parents=[shared], help="check one record and store it")
     writing.add_argument("--input", help="UTF-8 file holding the record as JSON; default: standard input")
     for name, text_ in (("check", "check every stored record"), ("query", "list earlier records")):
-        command = commands.add_parser(name, help=text_)
+        command = commands.add_parser(name, parents=[shared], help=text_)
         command.add_argument("--skills-dir", default=SKILLS_DIR, help=f"directory that holds the skills; default: {SKILLS_DIR}")
         if name == "query":
             command.add_argument("--skill", help="only the records of the skill with this name")

@@ -49,7 +49,7 @@ Carries out one unit of work.
 
 
 def run(script: str, root: Path, *args: str) -> tuple[int, dict]:
-    result = subprocess.run([sys.executable, "-X", "utf8", "-B", str(SCRIPTS / script), "--root", str(root), *args],
+    result = subprocess.run([sys.executable, "-X", "utf8", "-B", str(SCRIPTS / script), *args, "--root", str(root)],
                             capture_output=True, text=True, encoding="utf-8")
     return result.returncode, json.loads(result.stdout)
 
@@ -99,16 +99,34 @@ class PackageTests(unittest.TestCase):
                 with self.subTest(source=source.name, target=target):
                     self.assertTrue((REPO / target.partition("#")[0]).exists())
 
-    def test_scripts_run_on_the_oldest_supported_syntax(self):
-        # Every script opts into postponed annotations, which keeps `X | None` hints valid on Python 3.9.
+    def test_scripts_postpone_annotations(self):
+        # Postponed annotations keep `X | None` hints valid on Python 3.9, the oldest version the scripts support.
         for script in sorted(SCRIPTS.glob("*.py")) + [SKILL / "assets" / "script-template.py"]:
             with self.subTest(script=script.name):
                 self.assertIn("from __future__ import annotations", script.read_text(encoding="utf-8"))
 
 
 class NewSkillTests(Repository):
+    """The scaffolder runs from the copy of skills-creator inside the repository that receives the new skill."""
+
+    def setUp(self):
+        super().setUp()
+        self.creator = self.root / ".skills" / "skills-creator"
+        shutil.copytree(SKILL, self.creator, ignore=shutil.ignore_patterns("__pycache__"))
+
+    def new_skill(self, *args: str) -> tuple[int, dict]:
+        result = subprocess.run([sys.executable, "-X", "utf8", "-B", str(self.creator / "scripts" / "new_skill.py"), *args, "--root", str(self.root)],
+                                capture_output=True, text=True, encoding="utf-8")
+        return result.returncode, json.loads(result.stdout)
+
+    def test_a_copy_outside_the_repository_refuses(self):
+        code, result = run("new_skill.py", self.root, "--name", "report", "--size", "thin")
+        self.assertEqual(code, 1)
+        self.assertIn("copy it into the repository", result["errors"][0])
+        self.assertFalse((self.root / ".skills/report").exists())
+
     def test_thin_skill_is_scaffolded_filled_and_validated(self):
-        code, result = run("new_skill.py", self.root, "--name", "release-notes", "--size", "thin")
+        code, result = self.new_skill("--name", "release-notes", "--size", "thin")
         self.assertEqual(code, 0, result)
         self.assertEqual(result["files"], [".skills/release-notes/SKILL.md"])
         self.assertTrue(any("placeholder" in error for error in self.errors("--path", result["path"], "--skip-registration")))
@@ -117,12 +135,13 @@ class NewSkillTests(Repository):
         # The scaffolded skill opens its run with the record tool, at the path the template filled in.
         text = (self.root / result["path"] / "SKILL.md").read_text(encoding="utf-8")
         command = re.search(r"python -B (\S+run_record\.py) start --skill (\S+)", text)
-        self.assertEqual((Path(command.group(1)), command.group(2)), (SCRIPTS / "run_record.py", ".skills/release-notes"))
+        self.assertEqual(command.groups(), (".skills/skills-creator/scripts/run_record.py", ".skills/release-notes"))
+        self.assertIn("](../skills-creator/scripts/run_record.py)", text)
         code, opened = run("run_record.py", self.root, "start", "--skill", command.group(2))
         self.assertEqual((code, opened["run_ref"]["skill"], opened["run_ref"]["steps"]), (0, "release-notes", 6), opened)
 
     def test_full_skill_is_scaffolded_and_its_script_creates_the_artifact(self):
-        code, result = run("new_skill.py", self.root, "--name", "incident-report", "--size", "full", "--artifact", "post-mortem")
+        code, result = self.new_skill("--name", "incident-report", "--size", "full", "--artifact", "post-mortem")
         self.assertEqual(code, 0, result)
         self.assertEqual(sorted(result["files"]), [
             ".skills/incident-report/SKILL.md",
@@ -154,17 +173,17 @@ class NewSkillTests(Repository):
                      ["--name", "report", "--size", "full"], ["--name", "report", "--size", "full", "--artifact", "Bad Slug"],
                      ["--name", "report", "--size", "thin", "--artifact", "note"]):
             with self.subTest(args=args):
-                code, result = run("new_skill.py", self.root, *args)
+                code, result = self.new_skill(*args)
                 self.assertEqual((code, result["passed"]), (1, False))
-                self.assertFalse((self.root / ".skills").exists())
-        self.assertEqual(run("new_skill.py", self.root, "--name", "report", "--size", "thin")[0], 0)
+                self.assertEqual([path.name for path in (self.root / ".skills").iterdir()], ["skills-creator"])
+        self.assertEqual(self.new_skill("--name", "report", "--size", "thin")[0], 0)
         before = (self.root / ".skills/report/SKILL.md").read_text(encoding="utf-8")
-        self.assertEqual(run("new_skill.py", self.root, "--name", "report", "--size", "full", "--artifact", "note")[0], 1)
+        self.assertEqual(self.new_skill("--name", "report", "--size", "full", "--artifact", "note")[0], 1)
         self.assertEqual((self.root / ".skills/report/SKILL.md").read_text(encoding="utf-8"), before)
         self.assertFalse((self.root / ".skills/report/assets").exists())
 
     def test_skills_directory_can_be_named(self):
-        code, result = run("new_skill.py", self.root, "--name", "report", "--size", "thin", "--skills-dir", "tools/skills")
+        code, result = self.new_skill("--name", "report", "--size", "thin", "--skills-dir", "tools/skills")
         self.assertEqual(code, 0, result)
         self.assertIn("id: tools/skills/report", (self.root / "tools/skills/report/SKILL.md").read_text(encoding="utf-8"))
 
@@ -184,9 +203,17 @@ class RegistrationTests(Repository):
 
     def test_the_user_can_name_the_file_to_create(self):
         self.write_skill("alpha")
-        self.assertEqual(self.register("--file", "CLAUDE.md"), {"CLAUDE.md": "created"})
+        self.assertEqual(self.register("--create", "CLAUDE.md"), {"CLAUDE.md": "created"})
         self.assertFalse((self.root / "AGENTS.md").exists())
         self.assertEqual(self.errors("--path", ".skills/alpha"), [])
+        # Once a file exists the rule picks it, whatever file is named.
+        self.assertEqual(self.register("--create", "AGENTS.md"), {"CLAUDE.md": "unchanged"})
+        self.assertFalse((self.root / "AGENTS.md").exists())
+
+    def test_a_claude_md_that_names_a_missing_agents_md_still_carries_the_block(self):
+        self.write_skill("alpha")
+        (self.root / "CLAUDE.md").write_text("See AGENTS.md of the parent project.\n", encoding="utf-8")
+        self.assertEqual(self.register(), {"CLAUDE.md": "updated"})
 
     def test_the_existing_file_is_used_and_the_rest_of_it_is_kept(self):
         self.write_skill("alpha")
@@ -256,7 +283,7 @@ class RecordTests(Repository):
             "run_ref": self.ref,
             "request": "Do the work for the order page",
             "outcome": {"status": "completed", "summary": "The work is done."},
-            "steps": [{"step": 1, "status": "done", "note": "Read the inputs."}, {"step": 2, "status": "done", "note": "Reported."}],
+            "steps": [{"step": 1, "status": "done", "note": "Read the inputs."}, {"step": 2, "status": "pending", "note": "Will report."}],
             "decisions": [{"id": "DEC-01", "step": 1, "decision": "Read only the order page.", "basis": "The user named the order page."}],
             "evaluation": {"mode": "agent", "result": "clean"},
             "issues": [],
@@ -334,6 +361,7 @@ class RecordTests(Repository):
             "steps: one entry per step": self.record(steps=steps[:1]),
             "steps[2].status": self.record(steps=[steps[0], {**steps[1], "status": "ok"}]),
             "steps[1].note": self.record(steps=[{**steps[0], "note": ""}, steps[1]]),
+            "`pending` marks only the steps that follow": self.record(steps=[{**steps[0], "status": "pending"}, steps[1]]),
             "decisions[1].basis": self.record(decisions=[{"id": "DEC-01", "step": 1, "decision": "Chose.", "basis": ""}]),
             "decisions[1].step": self.record(decisions=[{"id": "DEC-01", "step": 3, "decision": "Chose.", "basis": "Rule."}]),
             "DEC-01 is used twice": self.record(decisions=self.record()["decisions"] * 2),

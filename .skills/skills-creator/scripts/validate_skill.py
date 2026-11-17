@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _common import (DESCRIPTION_LIMIT, HEADING, NAME_LIMIT, RECORD_TOOL, RESOURCE_FOLDERS, SEMVER, SLUG, SkillError, emit,  # noqa: E402
+from _common import (DESCRIPTION_LIMIT, HEADING, INSTRUCTION_FILES, NAME_LIMIT, RECORD_TOOL, RESOURCE_FOLDERS, SEMVER, SLUG, SkillError, emit,  # noqa: E402
                      procedure_steps, read_skill, resolve, sections, shown, skill_folders, without_fences)
 from register_skills import register  # noqa: E402
 
@@ -159,7 +159,7 @@ def validate(root: Path, path: Path, skip_registration: bool) -> list[str]:
         raise SkillError(f"{shown(path, root)} is neither a skill folder nor a directory of skills")
     errors = [error for skill in skills for error in check_skill(skill, root)]
     if not skip_registration:
-        errors += register(root, str(skills[0].parent), None, check=True).get("errors", [])
+        errors += register(root, str(skills[0].parent), INSTRUCTION_FILES[0], check=True).get("errors", [])
     return errors
 
 

@@ -47,10 +47,10 @@ def create(root: Path, skills_dir: str, name: str, size: str, artifact: str | No
     if folder.exists():
         raise SkillError(f"{shown(folder, root)} already exists; edit that skill instead of creating it")
     path = shown(folder, root)
-    try:
-        creator_rel = Path(os.path.relpath(SKILL, folder)).as_posix()
-    except ValueError:  # no relative path between two drives
-        creator_rel = SKILL.as_posix()
+    if not SKILL.is_relative_to(root):
+        # Every skill runs the record tool of this folder, so a path outside the repository would break for everyone else.
+        raise SkillError(f"this skill's folder is outside {root.as_posix()}; copy it into the repository that receives the skill, then run its copy")
+    creator_rel = Path(os.path.relpath(SKILL, folder)).as_posix()
     values = {"{{name}}": name, "{{id}}": path, "{{skill_path}}": path, "{{creator_path}}": shown(SKILL, root), "{{creator_rel}}": creator_rel}
     if artifact:
         values.update({"{{artifact}}": artifact, "{{artifact_snake}}": artifact.replace("-", "_")})

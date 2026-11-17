@@ -38,10 +38,10 @@ def read(path: Path) -> str | None:
         return handle.read()
 
 
-def register(root: Path, skills_dir: str, named: str | None, check: bool) -> dict[str, object]:
+def register(root: Path, skills_dir: str, create: str, check: bool) -> dict[str, object]:
     block = registration_block(root, resolve(skills_dir, root))
     files, stale = [], []
-    for target in registration_targets(root, named):
+    for target in registration_targets(root, create):
         current = read(target)
         text = updated(current, block)
         state = "created" if current is None else ("unchanged" if text == current else "updated")
@@ -61,12 +61,13 @@ def register(root: Path, skills_dir: str, named: str | None, check: bool) -> dic
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--skills-dir", default=SKILLS_DIR, help=f"directory that holds the skills, relative to the root or absolute; default: {SKILLS_DIR}")
-    parser.add_argument("--file", choices=INSTRUCTION_FILES, help="register in exactly this file, creating it when absent; default: the files the registration rule picks")
+    parser.add_argument("--create", choices=INSTRUCTION_FILES, default=INSTRUCTION_FILES[0],
+                        help=f"the file to create when the root has none of them; default: {INSTRUCTION_FILES[0]}")
     parser.add_argument("--check", action="store_true", help="write nothing; fail when a block is missing or out of date")
     parser.add_argument("--root", type=Path, default=Path.cwd(), help="root of the repository (default: the current directory)")
     args = parser.parse_args()
     try:
-        result = register(args.root.resolve(), args.skills_dir, args.file, args.check)
+        result = register(args.root.resolve(), args.skills_dir, args.create, args.check)
     except (SkillError, OSError) as exc:
         result = {"passed": False, "errors": [str(exc)]}
     return emit(result)

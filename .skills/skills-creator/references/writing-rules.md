@@ -21,7 +21,7 @@ Each rule lives in exactly one file, and every other file points to it instead o
 
 - Before writing a rule, look for the document that already owns it: the repository's instruction file, its contributing or architecture documentation, another skill.
   When one exists, the step links to that section and states only what the step adds.
-- When no document owns it, the skill owns it: in the step itself for a thin skill, in the format reference for a rule about the artifact of a full skill.
+- When no document owns it, the skill owns it: in the format reference when the rule is about the artifact of a full skill, otherwise in the step itself.
 - `SKILL.md` owns when the skill applies and the order of the steps.
   The format reference owns how the artifact is laid out, named and stored.
   A script owns nothing: its docstring names the reference whose rules it applies.
@@ -42,7 +42,7 @@ A skill is written for every run of its kind of work, in any repository where it
 - A step that needs something from the user says what to ask, that the question covers only the missing decisions that change the result, and which parts continue meanwhile.
 - A step that can fail says what happens then: fix and rerun, go back to a named step, or stop and report.
 - A command is written in full, with the path from the repository root, and its `<...>` values are named after what they hold.
-- The steps of a skill that changes files end with a verification the agent can actually perform, a cleanup of what the run created temporarily, and a report of what changed, how it was verified and what remains open.
+- The verification step names a check the agent can actually perform, and the report step says what changed, how it was verified and what remains open; which steps end a procedure belongs to the [Body](skill-format.md#body) section of the skill format.
 
 ## Line layout
 

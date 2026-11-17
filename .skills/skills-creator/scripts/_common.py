@@ -176,13 +176,14 @@ def registration_block(root: Path, skills_dir: Path) -> str:
     ])
 
 
-def registration_targets(root: Path, named: str | None) -> list[Path]:
-    """The instruction files that carry the block, per the registration rule of the skill format."""
+def registration_targets(root: Path, create: str = INSTRUCTION_FILES[0]) -> list[Path]:
+    """The instruction files that carry the block, per the registration rule of the skill format.
 
-    if named:
-        return [root / named]
+    `create` names the file to create when the root has none of them; it changes nothing once one exists.
+    """
+
     agents, claude = (root / name for name in INSTRUCTION_FILES)
     targets = [agents] if agents.is_file() else []
     if claude.is_file() and not (targets and "AGENTS.md" in claude.read_text(encoding="utf-8")):
         targets.append(claude)
-    return targets or [agents]
+    return targets or [root / create]

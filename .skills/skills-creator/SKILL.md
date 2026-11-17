@@ -4,7 +4,7 @@ description: "Creates or adjusts an agent skill in the standard skill format. Tu
 metadata:
   id: .skills/skills-creator
   kind: skill
-  version: 1.1.0
+  version: 1.2.0
 ---
 
 # Skill creation
@@ -13,7 +13,8 @@ Carries out one skill creation task: a new skill, or an adjustment of an existin
 The [skill format](references/skill-format.md) owns how a skill is laid out, named, stored and registered; the [writing rules](references/writing-rules.md) own how its content is worded; [Run evaluation](references/run-evaluation.md) owns how a run of a skill is recorded, evaluated and turned into improvements.
 This skill owns the order of the steps, the templates and the helper scripts.
 Where a step names a section, that section decides.
-The skill depends on no other framework: a skill it creates carries its own rules, and links to a document of the repository only where that document already owns a rule.
+The skill depends on no other framework.
+A skill it creates carries the rules of its own work, links to a document of the repository only where that document already owns a rule, and takes the recording and the evaluation of its runs from this skill.
 
 ## When to use
 
@@ -40,7 +41,7 @@ The skill depends on no other framework: a skill it creates carries its own rule
 ## Procedure
 
 Run the commands from the root of the repository that receives the skill.
-The commands name this skill's folder as `.skills/skills-creator`; when the folder lives elsewhere, use its path instead.
+The commands name this skill's folder as `.skills/skills-creator`; when the folder lives elsewhere in that repository, use its path instead.
 
 1. **Open the run.** Read the [skill format](references/skill-format.md) and the [writing rules](references/writing-rules.md) in full.
    Read the repository's instruction file, when it has one, and the `SKILL.md` of every skill already in the skills directory ([Location and naming](references/skill-format.md#location-and-naming)), together in one step.
@@ -67,10 +68,10 @@ The commands name this skill's folder as `.skills/skills-creator`; when the fold
    For a full skill, write the [format reference](references/skill-format.md#format-reference) first, then the [output template](references/skill-format.md#output-template), then adapt the [helper script](references/skill-format.md#helper-script) to what a tool can compute, or remove it when there is nothing to compute.
    Run each script once against a temporary directory and read its output.
    An adjusted skill gets its `version` bumped per [Frontmatter](references/skill-format.md#frontmatter).
-6. **Register the skills** in the instruction file that [Registration](references/skill-format.md#registration) picks; pass `--file` only when the user names the file:
+6. **Register the skills** in the instruction file that [Registration](references/skill-format.md#registration) picks; pass `--create CLAUDE.md` only when the repository has neither file and the user asks for that one:
 
    ```powershell
-   python -B .skills/skills-creator/scripts/register_skills.py [--skills-dir <dir>] [--file <AGENTS.md|CLAUDE.md>]
+   python -B .skills/skills-creator/scripts/register_skills.py [--skills-dir <dir>] [--create <AGENTS.md|CLAUDE.md>]
    ```
 
 7. **Validate**, then fix and rerun until the validator passes:
@@ -81,7 +82,7 @@ The commands name this skill's folder as `.skills/skills-creator`; when the fold
 
 8. **Re-read against the three scenarios** of the [writing rules](references/writing-rules.md#re-reading-against-three-scenarios).
    A scenario that fails goes back to step 5; after a change of the `name` or the `description`, steps 6 and 7 run again.
-9. **Evaluate and record.** The run is evaluated, in a separate agent when the host can create one, and each issue that meets the threshold improves this skill within the run ([Evaluating the run](references/run-evaluation.md#evaluating-the-run), [Applying an improvement](references/run-evaluation.md#applying-an-improvement)); then exactly one record is written, which `append` also checks ([Record](references/run-evaluation.md#record)):
+9. **Evaluate and record.** Have the run evaluated ([Evaluating the run](references/run-evaluation.md#evaluating-the-run)) and its issues improved ([Applying an improvement](references/run-evaluation.md#applying-an-improvement)), then write exactly one record ([Record](references/run-evaluation.md#record)):
 
    ```powershell
    python -B .skills/skills-creator/scripts/run_record.py append --input <JSON file>
