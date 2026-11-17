@@ -10,10 +10,11 @@ This repository is the source of the `skills-generator` skill, which lives in [`
   node --test tests/installer.test.mjs
   ```
 
+- Every notable change for users gets an entry under `## [Unreleased]` in [`CHANGELOG.md`](CHANGELOG.md), in the section that fits it (`Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`), in the same change.
+- Until a version is published to npm, changes join it without a new version: the skill format's rule to bump the version on every edit applies once the version is out.
 - The package version and the skill version are one version: a change that bumps `metadata.version` in `SKILL.md` bumps `version` in `package.json` to the same value, and a test fails while they differ.
 - Renaming or adding a job of `.github/workflows/ci.yml` changes the checks that `.github/rulesets/protect-main.json` requires: update both in one change, and the owner imports the ruleset again.
-- A release is published by the [publish workflow](.github/workflows/publish.yml) when the user pushes a tag; create or push a tag only when the user asks for a release, as described in the [README](README.md#continuous-integration-and-releases).
-
+- A release is published by the [publish workflow](.github/workflows/publish.yml) when the user pushes a tag; create or push a tag only when the user asks for a release, as described in [MAINTAINING.md](MAINTAINING.md#continuous-integration-and-releases).
 - Commit or push only when the user asks.
 
 <!-- skills:start -->

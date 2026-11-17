@@ -41,7 +41,7 @@ test("the package ships the installer, the skill and nothing else", () => {
   const packed = JSON.parse(result.stdout)[0].files.map((file) => file.path).sort();
   const tracked = spawnSync("git", ["ls-files", "--cached", "--others", "--exclude-standard", "--", ".skills/skills-generator", "bin"], { cwd: REPO, encoding: "utf8" });
   assert.equal(tracked.status, 0, tracked.stderr);
-  const expected = [...tracked.stdout.split("\n").filter(Boolean), "LICENSE", "README.md", "package.json"].sort();
+  const expected = [...tracked.stdout.split("\n").filter(Boolean), "CHANGELOG.md", "LICENSE", "README.md", "package.json"].sort();
   assert.deepEqual(packed, expected);
 });
 

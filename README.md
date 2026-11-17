@@ -1,123 +1,145 @@
-# skills-generator
+<div align="center">
 
-A skill that creates other skills, in one standard format: a folder whose `SKILL.md` says when the skill applies and gives a numbered procedure, with a template, a format reference and a helper script when each run of the skill produces a file of a fixed form.
-The format is drawn from the skills of the PIRL framework and stands on its own: `skills-generator` depends on no framework, and a skill it creates carries the rules of its own work.
+# 🧩 skills-generator
 
-Every skill it creates is registered in the repository's `AGENTS.md` or `CLAUDE.md`, whichever the repository has; when it has neither, `AGENTS.md` is created.
+**Turn any way of working into an agent skill: one standard format, registered where agents look, and better after every run.**
 
-Every skill it creates also improves from its own runs: each run records the decisions it made and how each step went as one JSON line, the record is evaluated for wrong decisions and wrongly carried out steps, and each issue whose cause lies in a skill is fixed in the file that owns the cause.
+[![npm version](https://img.shields.io/npm/v/skills-generator?color=2f6fe4&label=npm)](https://www.npmjs.com/package/skills-generator)
+[![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![node](https://img.shields.io/badge/node-%E2%89%A518-339933?logo=node.js&logoColor=white)](https://nodejs.org)
+[![python](https://img.shields.io/badge/python-%E2%89%A53.9-3776AB?logo=python&logoColor=white)](https://www.python.org)
 
-## What the repository holds
+[⚡ Quick Start](#-quick-start) · [🧩 Skill Format](#-what-a-generated-skill-looks-like) · [🔁 Self-improvement](#-how-skills-improve-themselves) · [🔧 Options](#-installer-options) · [📖 Docs](#-documentation)
+
+</div>
+
+---
+
+## 🤔 Why skills-generator?
+
+`skills-generator` is itself an agent skill: you describe the work in plain words, and your coding agent writes a skill for it.
+
+- 📐 **One format for every skill.** Each skill is a folder whose `SKILL.md` says when it applies and gives a numbered procedure, with a template, a format reference and a helper script when each run produces a file of a fixed form.
+- 📌 **Found by every agent.** Every skill is listed in the repository's `AGENTS.md` or `CLAUDE.md`, whichever it has; when it has neither, `AGENTS.md` is created.
+- 🔁 **Self-improving.** Each run of a generated skill records its steps and decisions, an evaluation looks for what went wrong, and the skill is fixed at the root cause.
+- ✅ **Checked, not guessed.** A validator checks the structure of every skill, and each new skill is re-read against three scenarios before it is handed over.
+- 🔒 **Safe updates.** Updating the package never overwrites the improvements your runs made, unless you ask for it.
+
+The format is drawn from the skills of the [PIRL framework](https://www.npmjs.com/package/pirl-framework) and stands on its own: no framework to install, and a generated skill carries the rules of its own work.
+It calls no model and needs no API key: your agent runs it with the model you already chose.
+
+---
+
+## ⚡ Quick Start
+
+At the root of your repository:
+
+```powershell
+npx skills-generator
+```
+
+The installer copies the skill into `.skills/skills-generator/` and registers it in `AGENTS.md` or `CLAUDE.md`.
+Commit `.skills/` and the instruction file so the whole team shares the same skills; the run records stay out of Git through `.skills/.records/.gitignore`.
+Then ask your agent in plain words:
+
+| You want to | Example request |
+| --- | --- |
+| Create a skill | "Create a skill that writes release notes from the merged pull requests" |
+| Turn a habit into a skill | "Turn the way we review database migrations into a skill" |
+| Adjust a skill | "Make the release-notes skill also list breaking changes" |
+| Improve a skill from its runs | "Improve the release-notes skill from its run records" |
+
+The agent asks only about the decisions it cannot settle from your repository, writes the skill, registers it and validates it.
+A new skill runs only when you ask for the work it carries out.
+
+---
+
+## 🧩 What a generated skill looks like
+
+| Size | Files | Chosen when |
+| --- | --- | --- |
+| 📄 Thin | `SKILL.md` | The skill orders the steps of a kind of work, and no run produces a file of a fixed form |
+| 📦 Full | `SKILL.md`, `assets/`, `references/` and, when a tool has something to compute, `scripts/` | Each run produces a file of a fixed form that later work reads |
 
 ```text
-.skills/skills-generator/
-  SKILL.md                       when the skill applies and the procedure of one skill creation task
-  references/skill-format.md     location and naming, the two sizes, frontmatter, body, resources, registration
-  references/writing-rules.md    how a description, a rule and a step are worded; the three scenarios of the re-read
-  references/run-evaluation.md   when a run records, how it is evaluated, the causes, the threshold, the improvements, the record fields
-  assets/                        templates of SKILL.md (thin and full), of a format reference, an output template and a helper script
-  scripts/new_skill.py           creates a skill folder from the templates
-  scripts/register_skills.py     writes the block that lists every skill into AGENTS.md or CLAUDE.md
-  scripts/validate_skill.py      checks the structure of a skill, its links and its registration
-  scripts/run_record.py          opens a run, writes its record, checks the stored records and looks earlier ones up
-AGENTS.md                        instruction file of this repository; it registers the skill
-tests/                           tests of the scripts and of the skill itself
+.skills/
+  release-notes/
+    SKILL.md                            frontmatter, When to use, Resources, Procedure
+    assets/release-note-template.md     template of one release note
+    references/release-note-format.md   how a release note is laid out, named and stored
+    scripts/new_release_note.py         creates a release note from the template
+  skills-generator/                     this skill, which every generated skill relies on
+  .records/                             the records of the runs, kept out of Git
 ```
 
-## Using it in a repository
+Every procedure opens the run with the record tool and ends with the same three steps: **Clean up → Evaluate and record → Report**.
 
-1. Install it from the root of the repository:
+---
 
-   ```powershell
-   npx skills-generator
-   ```
+## 🔁 How skills improve themselves
 
-   It copies the skill into `.skills/skills-generator/` and registers it in `AGENTS.md` or `CLAUDE.md`, creating `AGENTS.md` when the repository has neither.
-   `--skills-dir <dir>` installs it in another skills directory, and `--create CLAUDE.md` creates `CLAUDE.md` instead.
-2. Commit `.skills/` and the instruction file with the repository.
-3. Ask the agent for a skill in your own words, for example "create a skill that writes release notes".
-   The agent finds `skills-generator` through the instruction file and follows its [`SKILL.md`](.skills/skills-generator/SKILL.md).
+```text
+Open the run ──▶ the skill's own steps ──▶ Clean up ──▶ Evaluate and record ──▶ Report
+   │                    │                                     │
+   │ pins the version   │ notes each step and each            │ screens every step and decision,
+   │ of the skill       │ decision with its basis             │ fixes the cause, writes one record
+```
+
+- 🕵️ **Evaluated by another agent.** When the host can create one, a separate agent screens the run instead of the agent that made its decisions.
+- 🧭 **Fixed at the cause.** Each issue is classified as `instruction`, `ineffective_fix`, `input` or `execution`, and the file that owns the cause is fixed: the skill, its template, another skill, or `skills-generator` itself.
+- 🎯 **Only what recurs.** A wrong decision changes a skill only when it affects how the skill runs and can happen again; a mistake specific to one run is fixed in the output and noted.
+- 🛑 **Asks before it loosens.** A change that would weaken a safety rule, or that lies outside the skills directory, waits for your decision.
+- 🗂️ **Searchable history.** Records are JSON lines in `.skills/.records/<skill>/<date>.jsonl`, and earlier fixes are looked up before a new one is made.
+
+The whole contract lives in [`run-evaluation.md`](.skills/skills-generator/references/run-evaluation.md).
+
+---
+
+## 🔧 Installer options
+
+| Command | What it does |
+| --- | --- |
+| `npx skills-generator` | Installs the skill; once installed, updates it and keeps the files your runs changed |
+| `npx skills-generator@latest` | The same with the newest version, so that `npx` does not reuse the one it cached |
+
+Options: `--skills-dir <dir>` (install elsewhere than `.skills`), `--create CLAUDE.md` (the file to create when the repository has neither), `--force` (also replace the files changed in the repository), `--root <dir>`, `--version`, `--help`.
+
+When an update meets a file your runs improved, it lists the file and changes nothing: merge it by hand, or run again with `--force` after committing to keep a copy.
+The install writes `.skills/skills-generator/.install.json`, the hashes that updates compare with; commit it with the skill.
 
 The installer needs Node 18 or later; the skill's scripts need Python 3.9 or later and nothing outside the standard library.
-Without Node, copy the folder `.skills/skills-generator/` into the repository and run `python -B .skills/skills-generator/scripts/register_skills.py` from its root.
+Without Node, copy `.skills/skills-generator/` into your repository and run `python -B .skills/skills-generator/scripts/register_skills.py` from its root.
 
-### Updating
+---
 
-Run the same command again, with `@latest` so that `npx` does not reuse the version it cached:
+## 🛠️ Scripts
 
-```powershell
-npx skills-generator@latest
-```
+The agent runs them for you; each prints one JSON object with `passed` and exits with 0 when it is true.
 
-When the skill is already installed, the run updates it instead of installing it.
-The evaluation of each run may improve the files of `skills-generator` in the repository, so the update replaces only the files that are still as the last install wrote them.
-When a file changed in the repository, it lists the file and changes nothing: merge it by hand, or run again with `--force` to replace it, after committing to keep a copy.
-The install writes `.skills/skills-generator/.install.json`, the hashes the update compares with; commit it with the skill.
-
-## The scripts on their own
-
-```powershell
-python -B .skills/skills-generator/scripts/new_skill.py --name <name> --size <thin|full> [--artifact <artifact>] [--skills-dir <dir>]
-python -B .skills/skills-generator/scripts/register_skills.py [--skills-dir <dir>] [--create <AGENTS.md|CLAUDE.md>] [--check]
-python -B .skills/skills-generator/scripts/validate_skill.py --path <skill folder or skills directory> [--skip-registration]
-python -B .skills/skills-generator/scripts/run_record.py start --skill <skill folder>
-python -B .skills/skills-generator/scripts/run_record.py append --input <JSON file>
-python -B .skills/skills-generator/scripts/run_record.py check [--skills-dir <dir>]
-python -B .skills/skills-generator/scripts/run_record.py query [--skill <name>] [--issue-key <key>] [--rule <file#section>] [--last <N>] [--all]
-```
-
-Each script prints one JSON object with `passed`, and exits with 0 when it is true.
-The validator checks structure only; the wording of a skill is re-read against the three scenarios of the [writing rules](.skills/skills-generator/references/writing-rules.md#re-reading-against-three-scenarios).
-
-## Working on this repository
-
-Start from [`AGENTS.md`](AGENTS.md) and run the tests from the repository root:
-
-```powershell
-python -B -m unittest discover -s tests -p "test_*.py"
-node --test tests/installer.test.mjs
-```
-
-## Continuous integration and releases
-
-- [`ci.yml`](.github/workflows/ci.yml) runs the Python tests on Python 3.9 and 3.13 and the installer tests on Node 18, 22 and 24, on every push and pull request.
-- [`publish.yml`](.github/workflows/publish.yml) publishes `skills-generator` to npm when a tag `v<major>.<minor>.<patch>` is pushed.
-  It runs the CI first, then checks that the tag equals the `version` of `package.json`, that this version equals the `metadata.version` of `SKILL.md`, that the tagged commit is on `main` and that the version is not on npm yet.
-
-To release, bump the version in both `package.json` and `.skills/skills-generator/SKILL.md`, merge to `main`, then tag that commit:
-
-```powershell
-git tag v<version>
-git push origin v<version>
-```
-
-The publish job runs in the GitHub environment `npm`, which GitHub creates on the first run; protection rules, such as a required reviewer, are added there.
-It authenticates in one of two ways:
-
-1. **First release: a token.** Create a granular access token on npmjs.com with permission to publish, and save it as the secret `NPM_TOKEN` of the repository or of the environment `npm`.
-2. **Later releases: trusted publishing.** Once the package exists, open its settings on npmjs.com and add a trusted publisher: GitHub Actions, repository `tdmadc107/skills-creator`, workflow `publish.yml`, environment `npm`.
-   npm then authenticates the workflow through OIDC, and the secret `NPM_TOKEN` can be deleted and the token revoked.
-
-npm adds provenance to a package only when its source repository is public; this repository is private, so the workflow publishes without it.
-
-## Protecting the repository
-
-On a public repository nobody but the owner and the collaborators the owner adds can push, create a branch or create a tag; anyone else can only fork it and open a pull request.
-The rulesets in [`.github/rulesets/`](.github/rulesets/) protect the repository from mistakes and from collaborators as well, and keep the release tags, which publish to npm, to the owner.
-They are imported once in **Settings → Rules → Rulesets → New ruleset → Import a ruleset**, one file at a time; rulesets are enforced on public repositories, and on private ones only with a paid plan.
-
-| Ruleset | Effect |
+| Script | What it does |
 | --- | --- |
-| [`protect-main.json`](.github/rulesets/protect-main.json) | `main` cannot be deleted or force-pushed; every change reaches it through a pull request approved by the code owner ([`CODEOWNERS`](.github/CODEOWNERS)), with every CI job passing on the latest commit |
-| [`protect-release-tags.json`](.github/rulesets/protect-release-tags.json) | Only the owner can create, move or delete a tag `v*`, so only the owner can start a release |
-| [`restrict-branch-creation.json`](.github/rulesets/restrict-branch-creation.json) | Only the owner can create a branch; a collaborator works from a fork |
+| `new_skill.py --name <name> --size <thin\|full> [--artifact <name>]` | Creates a skill folder from the templates |
+| `register_skills.py [--create <AGENTS.md\|CLAUDE.md>] [--check]` | Lists every skill in the instruction file, or checks that the list is current |
+| `validate_skill.py --path <skill or skills directory>` | Checks the structure, the links and the registration of a skill |
+| `run_record.py <start\|append\|check\|query>` | Opens a run, writes its record, checks the stored records, looks earlier ones up |
 
-Each ruleset lets the repository admins bypass it, so the owner can still merge their own pull request, which no one else can approve, and push release tags.
-The checks that `protect-main.json` requires are the job names of [`ci.yml`](.github/workflows/ci.yml), and a test fails while the two differ.
+All of them live in `.skills/skills-generator/scripts/` and take `--root <dir>` and `--skills-dir <dir>` where they apply.
 
-Also set, under **Settings**:
+---
 
-- **Actions → General → Approval for running fork pull request workflows from contributors:** require approval for all external contributors, so the pull request of anyone outside the repository runs no workflow until the owner approves it.
-  Leave **Require actions to be pinned to a full-length commit SHA** unchecked: the workflows name actions by version tag, such as `actions/checkout@v6`.
-- **Actions → General → Workflow permissions:** read repository contents and packages permissions.
-- **Environments → npm:** add the owner as a required reviewer, and limit deployment to the tags `v*`, so a release waits for the owner's approval.
+## 📖 Documentation
+
+| To learn about | Read |
+| --- | --- |
+| The procedure of one skill creation task | [`SKILL.md`](.skills/skills-generator/SKILL.md) |
+| Layout, naming, frontmatter, body, registration | [Skill format](.skills/skills-generator/references/skill-format.md) |
+| How descriptions, rules and steps are worded | [Writing rules](.skills/skills-generator/references/writing-rules.md) |
+| Records, evaluation and improvements | [Run evaluation](.skills/skills-generator/references/run-evaluation.md) |
+| What changed in each version | [`CHANGELOG.md`](CHANGELOG.md) |
+| Tests, releases and repository protection | [`MAINTAINING.md`](MAINTAINING.md) |
+
+---
+
+## 📄 License
+
+[MIT](LICENSE) © tdmadc107

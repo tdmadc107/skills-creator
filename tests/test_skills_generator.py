@@ -94,7 +94,7 @@ class PackageTests(unittest.TestCase):
         self.assertEqual(code, 0, result)
 
     def test_repository_links_resolve(self):
-        for source in (REPO / "README.md", REPO / "AGENTS.md"):
+        for source in (REPO / "README.md", REPO / "AGENTS.md", REPO / "MAINTAINING.md", REPO / "CHANGELOG.md"):
             for target in LINK.findall(FENCE.sub("", source.read_text(encoding="utf-8"))):
                 if re.match(r"[a-z]+:", target):
                     continue
@@ -111,6 +111,21 @@ class PackageTests(unittest.TestCase):
         checks = next(rule["parameters"]["required_status_checks"] for rule in ruleset["rules"] if rule["type"] == "required_status_checks")
         self.assertEqual(sorted(check["context"] for check in checks), sorted(jobs))
         self.assertEqual(len(jobs), 5)
+
+    def test_the_changelog_describes_the_current_version(self):
+        # Until a release, the entries wait under Unreleased; publish.yml then requires a dated heading for the version.
+        text = (REPO / "CHANGELOG.md").read_text(encoding="utf-8")
+        version = re.search(r"^  version: (\S+)$", (SKILL / "SKILL.md").read_text(encoding="utf-8"), re.M).group(1)
+        headings = re.findall(r"(?m)^## \[([^\]]+)\](?: - (\d{4}-\d{2}-\d{2}))?$", text)
+        self.assertTrue(headings, "the changelog has no version heading")
+        self.assertIn(headings[0][0], ("Unreleased", version), "the newest heading is Unreleased or the current version")
+        self.assertTrue(all(date for name, date in headings if name != "Unreleased"), "every released version has a date")
+        # Each released version links to its tag, as a reference definition at the end of the file.
+        links = dict(re.findall(r"(?m)^\[([^\]]+)\]: (\S+)$", text))
+        for name, _ in headings:
+            if name != "Unreleased":
+                with self.subTest(version=name):
+                    self.assertEqual(links.get(name), f"https://github.com/tdmadc107/skills-creator/releases/tag/v{name}")
 
     def test_scripts_postpone_annotations(self):
         # Postponed annotations keep `X | None` hints valid on Python 3.9, the oldest version the scripts support.
@@ -257,6 +272,24 @@ class RegistrationTests(Repository):
         (self.root / "CLAUDE.md").write_text("@AGENTS.md\n", encoding="utf-8")
         self.assertEqual(self.register(), {"AGENTS.md": "unchanged"})
         self.assertEqual((self.root / "CLAUDE.md").read_text(encoding="utf-8"), "@AGENTS.md\n")
+        (self.root / "CLAUDE.md").write_text("# Claude\n\nRead @./AGENTS.md first.\n", encoding="utf-8")
+        self.assertEqual(self.register(), {"AGENTS.md": "unchanged"})
+
+    def test_a_claude_md_that_only_names_agents_md_gets_the_block_too(self):
+        # Claude Code reads CLAUDE.md instead of AGENTS.md; a sentence naming AGENTS.md does not load it.
+        self.write_skill("alpha")
+        (self.root / "AGENTS.md").write_text("# Agents\n", encoding="utf-8")
+        (self.root / "CLAUDE.md").write_text("# Claude\n\nFollow the rules in AGENTS.md.\n", encoding="utf-8")
+        self.assertEqual(self.register(), {"AGENTS.md": "updated", "CLAUDE.md": "updated"})
+        self.assertIn("<!-- skills:start -->", (self.root / "CLAUDE.md").read_text(encoding="utf-8"))
+
+    @unittest.skipIf(sys.platform == "win32", "creating a symlink needs extra rights on Windows")
+    def test_a_claude_md_linked_to_agents_md_is_written_once(self):
+        self.write_skill("alpha")
+        (self.root / "AGENTS.md").write_text("# Agents\n", encoding="utf-8")
+        (self.root / "CLAUDE.md").symlink_to("AGENTS.md")
+        self.assertEqual(self.register(), {"AGENTS.md": "updated"})
+        self.assertEqual((self.root / "AGENTS.md").read_text(encoding="utf-8").count("<!-- skills:start -->"), 1)
 
     def test_line_endings_of_the_file_are_kept(self):
         self.write_skill("alpha")

@@ -108,8 +108,8 @@ A script in `scripts/` follows these conventions:
 Every skill is registered in the repository's instruction file, the file the host loads in every session, so that an agent finds the skill whatever directory the host looks for skills in.
 
 - **Which file.** `AGENTS.md` when the repository root has it.
-  `CLAUDE.md` when the root has it, unless `AGENTS.md` exists and `CLAUDE.md` names it: such a `CLAUDE.md` already loads the block from `AGENTS.md`.
-  So both files carry the block when both exist and `CLAUDE.md` does not name `AGENTS.md`.
+  `CLAUDE.md` when the root has it, unless `AGENTS.md` exists and `CLAUDE.md` loads it, through an `@AGENTS.md` import or as a link to it: such a `CLAUDE.md` already brings the block from `AGENTS.md`.
+  A `CLAUDE.md` that only names `AGENTS.md` in a sentence does not load it, so both files carry the block when both exist and `CLAUDE.md` does not import `AGENTS.md`.
   When the root has neither, create `AGENTS.md`, or `CLAUDE.md` when the user asks for that file.
 - **What.** One block between the markers `<!-- skills:start -->` and `<!-- skills:end -->`: a `Skills` heading, the instruction to read and follow the `SKILL.md` of the skill whose description matches the request, and a table with one row per skill of the skills directory, its link and its description.
 - **When.** After a skill is created, after its `name` or `description` changes, and after a skill is removed.
