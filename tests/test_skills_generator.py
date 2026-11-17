@@ -94,7 +94,7 @@ class PackageTests(unittest.TestCase):
         self.assertEqual(code, 0, result)
 
     def test_repository_links_resolve(self):
-        for source in (REPO / "README.md", REPO / "AGENTS.md"):
+        for source in (REPO / "README.md", REPO / "AGENTS.md", REPO / "MAINTAINING.md"):
             for target in LINK.findall(FENCE.sub("", source.read_text(encoding="utf-8"))):
                 if re.match(r"[a-z]+:", target):
                     continue
