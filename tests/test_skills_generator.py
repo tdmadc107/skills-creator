@@ -382,6 +382,22 @@ class RegistrationTests(Repository):
         self.assertIn("| [`alpha`](.agents/skills/alpha/SKILL.md) |", text)
         self.assertIn("`.agents/skills/`, `.claude/skills/`", text)
 
+    def test_a_skill_of_another_form_is_listed_or_named_but_never_blocks_the_others(self):
+        self.write_skill("alpha")
+        folded = self.root / ".agents/skills/folded"
+        folded.mkdir()
+        (folded / "SKILL.md").write_text("---\nname: folded\ndescription: >\n  Reviews a pull request.\n  Use when asked.\n---\n\n# Review\n", encoding="utf-8")
+        broken = self.root / ".agents/skills/broken"
+        broken.mkdir()
+        (broken / "SKILL.md").write_text("---\nname: broken\n---\n\n# No description\n", encoding="utf-8")
+        code, result = run("register_skills.py", self.root)
+        self.assertEqual(code, 0, result)
+        self.assertEqual(result["skipped"], [".agents/skills/broken: SKILL.md has no name or no description"])
+        text = (self.root / "AGENTS.md").read_text(encoding="utf-8")
+        self.assertIn("| [`folded`](.agents/skills/folded/SKILL.md) | Reviews a pull request. Use when asked. |", text)
+        self.assertIn("| [`alpha`]", text)
+        self.assertNotIn("broken", text)
+
     def test_nothing_to_register_fails(self):
         self.assertEqual(run("register_skills.py", self.root)[0], 1)
         self.assertFalse((self.root / "AGENTS.md").exists())

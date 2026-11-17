@@ -18,8 +18,10 @@ How the content of a skill is worded belongs to the [writing rules](writing-rule
   | GitHub Copilot | `.github/copilot-instructions.md` or `.github/instructions/` | `.github/skills/` |
 
   The user may name other folders instead; the helper scripts take them with `--skills-dir`.
-- Copies: every skills folder holds every skill, and the copies of a skill are identical but for the paths that name their own folder, such as `metadata.id` and the commands.
+- Copies: every skills folder holds every skill of this format, and the copies of a skill are identical but for the paths that name their own folder, such as `metadata.id` and the commands.
   A skill is created in every skills folder at once, and every change to a skill, an improvement included, is made in every copy; the validator reports a copy that is missing or differs.
+  A skills folder that lacks a skill, such as the folder of a provider added later, gets a copy of it with the paths of that folder; the installer makes these copies when it runs, and never overwrites a folder.
+  A skill of another form that the user keeps for one provider stays where it is; the registration lists it when its frontmatter has a name and a description.
 - Skill folder: `<skills folder>/<name>/`.
   The `name` is ASCII kebab-case (lowercase letters, digits and single hyphens), at most 64 characters, and unique among the skills.
   It names the work the skill carries out; skills that belong to one family share a prefix.

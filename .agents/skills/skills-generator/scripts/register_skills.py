@@ -39,7 +39,8 @@ def read(path: Path) -> str | None:
 
 
 def register(root: Path, named_dirs: list[str] | None, create: str | None, check: bool) -> dict[str, object]:
-    block = registration_block(root, [resolve(name, root) for name in skills_dirs(root, named_dirs)])
+    skipped: list[str] = []
+    block = registration_block(root, [resolve(name, root) for name in skills_dirs(root, named_dirs)], skipped)
     files, stale = [], []
     for target in registration_targets(root, create):
         current = read(target)
@@ -55,7 +56,7 @@ def register(root: Path, named_dirs: list[str] | None, create: str | None, check
                 handle.write(text)
     if stale:
         return {"passed": False, "errors": stale}
-    return {"passed": True, "files": files}
+    return {"passed": True, "files": files, **({"skipped": skipped} if skipped else {})}
 
 
 def main() -> int:

@@ -36,7 +36,7 @@ BLOCK = re.compile(re.escape(BLOCK_START) + r".*?" + re.escape(BLOCK_END), re.S)
 FENCE = re.compile(r"(?ms)^[ \t]*(`{3,}|~{3,})[^\n]*\n.*?^[ \t]*\1[ \t]*$")
 HEADING = re.compile(r"(?m)^(#{1,6}) (.+?)\s*$")
 STEP = re.compile(r"(?m)^(\d+)\. (.*)$")
-# The tool that opens and records every run of a skill, and the folder of the skills directory that keeps the records.
+# The tool that opens and records every run of a skill, and the folder of each skills folder that keeps the records.
 RECORD_TOOL = "run_record.py"
 RECORDS = ".records"
 # The two steps that end every procedure, in this order; a record covers every step before them.
@@ -91,8 +91,11 @@ def parse_scalar(raw: str, where: str) -> Any:
     return value
 
 
+BLOCK_SCALAR = re.compile(r"[|>][+-]?")
+
+
 def parse_frontmatter(text: str, where: str) -> tuple[dict[str, Any], str]:
-    """Read the YAML subset a skill uses: `key: value` lines and one level of nested keys.
+    """Read the YAML subset a skill uses: `key: value` lines, one level of nested keys, and `>` or `|` block values.
 
     Returns the fields and the body below the frontmatter.
     """
@@ -106,7 +109,10 @@ def parse_frontmatter(text: str, where: str) -> tuple[dict[str, Any], str]:
         raise SkillError(f"{where}: the frontmatter block is not closed by ---") from None
     meta: dict[str, Any] = {}
     parent: dict[str, Any] | None = None
-    for number, line in enumerate(lines[1:end], 2):
+    number = 1
+    while number < end:
+        line = lines[number]
+        number += 1
         if not line.strip() or line.lstrip().startswith("#"):
             continue
         indented = line.startswith((" ", "\t"))
@@ -114,6 +120,18 @@ def parse_frontmatter(text: str, where: str) -> tuple[dict[str, Any], str]:
         spot = f"{where}:{number}"
         if not separator or not key or (raw and not raw.startswith(" ")):
             raise SkillError(f"{spot}: expected `key: value`")
+        if BLOCK_SCALAR.fullmatch(raw.strip()):
+            # A block value: the more indented lines below, folded into one line by `>` or kept as lines by `|`.
+            own = len(line) - len(line.lstrip())
+            block = []
+            while number < end and (not lines[number].strip() or len(lines[number]) - len(lines[number].lstrip()) > own):
+                block.append(lines[number].strip())
+                number += 1
+            value = (" ".join(part for part in block if part) if raw.strip().startswith(">") else "\n".join(block).strip("\n"))
+            (parent if indented and parent is not None else meta)[key] = value
+            if not indented:
+                parent = None
+            continue
         if indented:
             if parent is None:
                 raise SkillError(f"{spot}: an indented key needs a parent key above it")
@@ -194,25 +212,36 @@ def skills_dirs(root: Path, named: list[str] | None = None) -> list[str]:
 
 
 def skill_folders(skills_dir: Path) -> list[Path]:
-    """Every folder of the skills directory that holds a SKILL.md, by name."""
+    """Every folder of one skills folder that holds a SKILL.md, by name."""
 
     if not skills_dir.is_dir():
         return []
     return sorted(folder for folder in skills_dir.iterdir() if (folder / "SKILL.md").is_file())
 
 
-def registration_block(root: Path, dirs: list[Path]) -> str:
-    """The block an instruction file carries: one row per skill, linked to its copy in the first folder that holds it."""
+def registration_block(root: Path, dirs: list[Path], skipped: list[str] | None = None) -> str:
+    """The block an instruction file carries: one row per skill, linked to its copy in the first folder that holds it.
+
+    A skill whose frontmatter cannot be read, or has no name or description, is left out and named in `skipped`, so
+    one skill the user wrote in another form does not keep the others from being listed.
+    """
 
     # A provider's skills folder that does not exist yet holds no skill to list and is not named.
     dirs = [skills_dir for skills_dir in dirs if skills_dir.is_dir()]
     rows: dict[str, str] = {}
     for skills_dir in dirs:
         for folder in skill_folders(skills_dir):
-            meta, _ = read_skill(folder)
+            try:
+                meta, _ = read_skill(folder)
+            except SkillError as exc:
+                if skipped is not None:
+                    skipped.append(f"{shown(folder, root)}: {exc}")
+                continue
             name, description = meta.get("name"), meta.get("description")
             if not isinstance(name, str) or not isinstance(description, str) or not name or not description:
-                raise SkillError(f"{shown(folder, root)}/SKILL.md: name and description are required to register the skill")
+                if skipped is not None:
+                    skipped.append(f"{shown(folder, root)}: SKILL.md has no name or no description")
+                continue
             if name not in rows:
                 cell = " ".join(description.split()).replace("|", "\\|")
                 rows[name] = f"| [`{name}`]({shown(folder / 'SKILL.md', root)}) | {cell} |"

@@ -22,9 +22,14 @@ To be released as 2.0.0: the skill moves from `.skills/` to the skills folders o
 - `npx skills-generator` installs or updates the copy of every provider in use; an update that meets a file changed in any copy changes nothing anywhere unless `--force` is given.
 - When the project has neither `AGENTS.md` nor `CLAUDE.md`, `CLAUDE.md` is created if Claude Code is the only provider in use, otherwise `AGENTS.md`; creating `CLAUDE.md` puts Claude Code in use, so its skills folder gets the skill too.
 - The registration block lists each skill once, linked to its copy in the first skills folder, and names only the skills folders that exist.
+- The installer copies every skill of the skill format into a skills folder that lacks it, such as the folder of a provider added after skills were created, with the paths of that folder; it never overwrites a folder and leaves skills of another form where they are.
 - Records are written next to the copy of the skill that ran, `<skills folder>/.records/`, and `run_record.py check` and `query` read the records of every skills folder together.
 - The scripts find the skills folders themselves; `--skills-dir` of `new_skill.py`, `register_skills.py` and `run_record.py` is repeatable and names other folders instead.
 - The README says to run the installer at the root folder of the project.
+
+### Fixed
+
+- The frontmatter reader takes `>` and `|` block values, as in a skill whose description spans several lines, and the registration leaves out, and names, a skill it cannot read instead of failing for every skill.
 
 ### Deprecated
 

@@ -176,6 +176,43 @@ function register(opts, skillsDir) {
     return;
   }
   for (const file of output.files) console.log(`${file.path}: ${file.state}`);
+  for (const reason of output.skipped || []) console.warn(`note: not listed in the instruction file: ${reason}`);
+}
+
+/**
+ * Copy each skill of the skill format that a skills folder lacks from a folder that has it, so that every provider
+ * holds every such skill, as when a provider is added after skills were created. The copy names its own folder in
+ * place of the source's. A skill of another form, which the user wrote for one provider, is left where it is, and an
+ * existing folder is never overwritten.
+ */
+function copyMissingSkills(opts, dirs) {
+  const sources = new Map();
+  for (const dir of dirs) {
+    const base = path.join(opts.root, ...dir.split("/"));
+    if (!fs.existsSync(base)) continue;
+    for (const entry of fs.readdirSync(base, { withFileTypes: true })) {
+      if (!entry.isDirectory() || entry.name === SKILL || sources.has(entry.name)) continue;
+      const entryPoint = path.join(base, entry.name, "SKILL.md");
+      if (!fs.existsSync(entryPoint)) continue;
+      const text = fs.readFileSync(entryPoint, "utf8");
+      // Only a skill of the format: `metadata.kind: skill` and a `metadata.id` that is its own path.
+      if (/^  kind: skill$/m.test(text) && new RegExp(`^  id: ${`${dir}/${entry.name}`.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "m").test(text)) {
+        sources.set(entry.name, dir);
+      }
+    }
+  }
+  for (const [name, from] of sources) {
+    for (const dir of dirs) {
+      const target = path.join(opts.root, ...dir.split("/"), name);
+      if (dir === from || fs.existsSync(target)) continue;
+      const source = path.join(opts.root, ...from.split("/"), name);
+      for (const rel of filesOf(source)) {
+        const text = fs.readFileSync(path.join(source, rel), "utf8");
+        writeFile(path.join(target, rel), text.split(`${from}/${name}`).join(`${dir}/${name}`).split(`${from}/${SKILL}`).join(`${dir}/${SKILL}`));
+      }
+      console.log(`Copied ${name} from ${from}/ to ${dir}/`);
+    }
+  }
 }
 
 /** What one skills folder needs: a new copy, or an update of the copy this package installed. */
@@ -228,6 +265,7 @@ function installOrUpdate(opts) {
       + "\nmerge them by hand in every copy, or run again with --force to replace them (commit first to keep a copy); nothing was changed");
   }
   for (const plan of plans) applyFolder(opts, plan);
+  copyMissingSkills(opts, plans.map((plan) => plan.skillsDir));
   const legacy = path.join(opts.root, LEGACY_DIR, SKILL, MANIFEST);
   if (fs.existsSync(legacy)) {
     console.warn(`warning: ${LEGACY_DIR}/${SKILL}/ holds a copy that version 1.0.0 installed; agents do not read ${LEGACY_DIR}/, so move the skills you created there into the folders above, then delete ${LEGACY_DIR}/`);

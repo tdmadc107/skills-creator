@@ -107,6 +107,30 @@ test("each provider in use gets a full copy in its skills folder, with its own p
   }
 });
 
+test("a provider added later gets every skill of the format, and a skill of another form stays where it is", { skip: !PYTHON && "Python is required" }, (t) => {
+  const root = tempRepo(t);
+  const own = path.join(root, ".claude/skills/my-review");
+  fs.mkdirSync(own, { recursive: true });
+  fs.writeFileSync(path.join(own, "SKILL.md"), "---\nname: my-review\ndescription: >\n  Reviews a pull request.\n  Use when asked.\n---\n\n# Review\n");
+  assert.equal(cli(root).code, 0);
+  const creator = path.join(root, ".claude/skills/skills-generator/scripts/new_skill.py");
+  const made = spawnSync(PYTHON, ["-B", creator, "--name", "release-notes", "--size", "thin", "--root", root], { encoding: "utf8" });
+  assert.equal(made.status, 0, made.stdout);
+  const entry = path.join(root, ".claude/skills/release-notes/SKILL.md");
+  fs.writeFileSync(entry, fs.readFileSync(entry, "utf8").replace(/<[^<>\n]+>/g, "filled"));
+
+  fs.mkdirSync(path.join(root, ".cursor"));
+  const result = cli(root);
+  assert.equal(result.code, 0, result.err);
+  assert.match(result.out, /Copied release-notes from \.claude\/skills\/ to \.cursor\/skills\//);
+  assert.deepEqual(fs.readdirSync(path.join(root, ".cursor/skills")).sort(), ["release-notes", "skills-generator"]);
+  assert.match(fs.readFileSync(path.join(root, ".cursor/skills/release-notes/SKILL.md"), "utf8"), /^  id: \.cursor\/skills\/release-notes$/m);
+  assert.match(fs.readFileSync(path.join(root, "CLAUDE.md"), "utf8"), /\| \[`my-review`\]\(\.claude\/skills\/my-review\/SKILL\.md\) \| Reviews a pull request\. Use when asked\. \|/);
+  assert.equal(validate(root, ".claude/skills/skills-generator", ".claude/skills/release-notes").passed, true);
+  // A second run copies nothing again.
+  assert.doesNotMatch(cli(root).out, /Copied/);
+});
+
 test("--create CLAUDE.md in a project with no provider installs for Claude Code", { skip: !PYTHON && "Python is required" }, (t) => {
   const root = tempRepo(t);
   const result = cli(root, "--create", "CLAUDE.md");

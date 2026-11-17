@@ -52,6 +52,8 @@ The installer looks for the agent providers your project uses and copies the ski
 
 - 📁 An existing `skills` folder is used as it is; a missing one is created, named `skills`.
 - 🧩 With several providers, each one gets a full copy, and every skill you create or improve later is kept identical in every copy.
+- ➕ Add a provider later and run the installer again: the new provider gets `skills-generator` and a copy of every skill you created.
+- 🤝 Skills you wrote yourself for one provider stay where they are, and are listed in the instruction file too.
 - 📝 The skills are also listed in `AGENTS.md` or `CLAUDE.md`, whichever the project has; with neither, `CLAUDE.md` is created when Claude Code is your only provider, `AGENTS.md` otherwise.
 
 Commit the skills folders and the instruction file so the whole team shares the same skills; the run records stay out of Git through the `.records/.gitignore` of each skills folder.
@@ -104,7 +106,7 @@ Open the run ──▶ the skill's own steps ──▶ Clean up ──▶ Evalua
 - 🕵️ **Evaluated by another agent.** When the host can create one, a separate agent screens the run instead of the agent that made its decisions.
 - 🧭 **Fixed at the cause.** Each issue is classified as `instruction`, `ineffective_fix`, `input` or `execution`, and the file that owns the cause is fixed: the skill, its template, another skill, or `skills-generator` itself.
 - 🎯 **Only what recurs.** A wrong decision changes a skill only when it affects how the skill runs and can happen again; a mistake specific to one run is fixed in the output and noted.
-- 🛑 **Asks before it loosens.** A change that would weaken a safety rule, or that lies outside the skills directory, waits for your decision.
+- 🛑 **Asks before it loosens.** A change that would weaken a safety rule, or that lies outside the skills folders, waits for your decision.
 - 🗂️ **Searchable history.** Records are JSON lines in `<skills folder>/.records/<skill>/<date>.jsonl`, read together across the skills folders, and earlier fixes are looked up before a new one is made.
 
 The whole contract lives in [`run-evaluation.md`](.agents/skills/skills-generator/references/run-evaluation.md).
