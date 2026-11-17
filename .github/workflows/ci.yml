@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    name: Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The oldest version the skill's scripts support, and the newest.
+        python: ["3.9", "3.13"]
+    steps:
+      - uses: actions/checkout@v6
+      # setup-python has no build of every supported version for the newest runner images, so it only provides
+      # the Python that installs uv, and uv provides the version under test.
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Install uv
+        run: python -m pip install --disable-pip-version-check uv
+      - name: Test the skill and its scripts
+        run: uv run --python "${{ matrix.python }}" --no-project python -B -W error::ResourceWarning -m unittest discover -s tests -p "test_*.py"
+
+  installer:
+    name: Installer on Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The oldest version package.json allows, and the current ones.
+        node: ["18", "22", "24"]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node }}
+          package-manager-cache: false
+      - name: Test the installer and the package contents
+        run: node --test tests/installer.test.mjs

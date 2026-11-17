@@ -1,0 +1,42 @@
+{
+  "name": "skills-generator",
+  "version": "1.0.0",
+  "description": "An agent skill that creates other skills in one standard format, registers them in AGENTS.md or CLAUDE.md, and improves them from the records of their runs.",
+  "keywords": [
+    "agent-skills",
+    "ai-agents",
+    "claude-code",
+    "codex",
+    "coding-agent",
+    "skill-creator",
+    "skills"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "skills-generator": "bin/skills-generator.mjs"
+  },
+  "files": [
+    "bin/",
+    ".skills/skills-generator/",
+    "!**/__pycache__/",
+    "!**/.install.json"
+  ],
+  "scripts": {
+    "test": "python3 -B -m unittest discover -s tests -p \"test_*.py\" && node --test tests/installer.test.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tdmadc107/skills-creator.git"
+  },
+  "homepage": "https://github.com/tdmadc107/skills-creator#readme",
+  "bugs": {
+    "url": "https://github.com/tdmadc107/skills-creator/issues"
+  }
+}
