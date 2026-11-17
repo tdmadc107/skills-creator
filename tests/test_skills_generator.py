@@ -120,6 +120,12 @@ class PackageTests(unittest.TestCase):
         self.assertTrue(headings, "the changelog has no version heading")
         self.assertIn(headings[0][0], ("Unreleased", version), "the newest heading is Unreleased or the current version")
         self.assertTrue(all(date for name, date in headings if name != "Unreleased"), "every released version has a date")
+        # Each released version links to its tag, as a reference definition at the end of the file.
+        links = dict(re.findall(r"(?m)^\[([^\]]+)\]: (\S+)$", text))
+        for name, _ in headings:
+            if name != "Unreleased":
+                with self.subTest(version=name):
+                    self.assertEqual(links.get(name), f"https://github.com/tdmadc107/skills-creator/releases/tag/v{name}")
 
     def test_scripts_postpone_annotations(self):
         # Postponed annotations keep `X | None` hints valid on Python 3.9, the oldest version the scripts support.

@@ -23,7 +23,7 @@ The first command tests the skill and its scripts; the second tests the npm inst
 To release:
 
 1. Bump the version in both `package.json` and `.skills/skills-generator/SKILL.md`, unless the change that needed it already did.
-2. In `CHANGELOG.md`, rename `## [Unreleased]` to `## [<version>] - <YYYY-MM-DD>`, the release date, and start a new empty `## [Unreleased]` above it when more changes are on the way.
+2. In `CHANGELOG.md`, rename `## [Unreleased]` to `## [<version>] - <YYYY-MM-DD>`, the release date, add the line `[<version>]: https://github.com/tdmadc107/skills-creator/releases/tag/v<version>` at the top of the links at the end of the file, and start a new empty `## [Unreleased]` above the heading when more changes are on the way.
 3. Merge to `main`, then tag that commit:
 
 ```powershell
