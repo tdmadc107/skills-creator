@@ -1,24 +1,24 @@
 ---
 name: skills-creator
-description: "Creates or adjusts an agent skill in the standard skill format. Turns a request for a skill into a skill folder whose SKILL.md holds the frontmatter, when the skill applies and a numbered procedure, with a template, a format reference and a helper script when each run of the skill produces a file of a fixed form, then registers every skill in the repository's AGENTS.md or CLAUDE.md, creating that file when the repository has neither, and validates the structure. Use only when the user's own words ask to create, scaffold, restructure or adjust a skill. Do not use to run an existing skill, to answer a question about skills that only needs an explanation, or to write agent instructions that are not a skill."
+description: "Creates or adjusts an agent skill in the standard skill format. Turns a request for a skill into a skill folder whose SKILL.md holds the frontmatter, when the skill applies and a numbered procedure, with a template, a format reference and a helper script when each run of the skill produces a file of a fixed form, then registers every skill in the repository's AGENTS.md or CLAUDE.md, creating that file when the repository has neither, and validates the structure. Every skill it creates records the decisions and the steps of each run, has the record evaluated and is improved from the issues found. Use only when the user's own words ask to create, scaffold, restructure or adjust a skill, or to improve a skill from its run records. Do not use to run an existing skill, to answer a question about skills that only needs an explanation, or to write agent instructions that are not a skill."
 metadata:
   id: .skills/skills-creator
   kind: skill
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 # Skill creation
 
 Carries out one skill creation task: a new skill, or an adjustment of an existing one.
-The [skill format](references/skill-format.md) owns how a skill is laid out, named, stored and registered; the [writing rules](references/writing-rules.md) own how its content is worded.
+The [skill format](references/skill-format.md) owns how a skill is laid out, named, stored and registered; the [writing rules](references/writing-rules.md) own how its content is worded; [Run evaluation](references/run-evaluation.md) owns how a run of a skill is recorded, evaluated and turned into improvements.
 This skill owns the order of the steps, the templates and the helper scripts.
 Where a step names a section, that section decides.
 The skill depends on no other framework: a skill it creates carries its own rules, and links to a document of the repository only where that document already owns a rule.
 
 ## When to use
 
-- The user's own words ask to create a skill, to turn a way of working into a skill, or to restructure or adjust an existing skill.
-- Not for running a skill that exists, which follows that skill's own `SKILL.md`; not for a question about skills that only needs an explanation, which is answered directly; not for agent instructions that are not a skill, such as the rules of an instruction file, which are edited in that file.
+- The user's own words ask to create a skill, to turn a way of working into a skill, to restructure or adjust an existing skill, or to improve a skill from its run records.
+- Not for running a skill that exists, which follows that skill's own `SKILL.md`; not for a question about skills that only needs an explanation, which is answered directly; not for agent instructions that are not a skill, such as the rules of an instruction file, which are edited in that file; not for the improvements the evaluation of a run applies, which follow [Applying an improvement](references/run-evaluation.md#applying-an-improvement) inside that run.
 
 ## Resources
 
@@ -26,6 +26,7 @@ The skill depends on no other framework: a skill it creates carries its own rule
 | --- | --- |
 | [`references/skill-format.md`](references/skill-format.md) | Location and naming, the two sizes, frontmatter, body, the resources of a full skill and registration |
 | [`references/writing-rules.md`](references/writing-rules.md) | How the description, the rules and the steps are worded, and the three scenarios the finished skill is re-read against |
+| [`references/run-evaluation.md`](references/run-evaluation.md) | When a run records, how it is evaluated, the causes of an issue, the improvement threshold, how an improvement is applied and the record fields |
 | [`assets/skill-thin-template.md`](assets/skill-thin-template.md) | Template of the `SKILL.md` of a thin skill |
 | [`assets/skill-template.md`](assets/skill-template.md) | Template of the `SKILL.md` of a full skill |
 | [`assets/output-template.md`](assets/output-template.md) | Template of the output template a full skill keeps in `assets/` |
@@ -34,26 +35,35 @@ The skill depends on no other framework: a skill it creates carries its own rule
 | [`scripts/new_skill.py`](scripts/new_skill.py) | Creates the skill folder from the templates, with the name, the id, the resource file names and the skill path filled in |
 | [`scripts/register_skills.py`](scripts/register_skills.py) | Writes the block that lists every skill into the repository's instruction file, or checks it with `--check` |
 | [`scripts/validate_skill.py`](scripts/validate_skill.py) | Checks the structure of a skill, its links and its registration |
+| [`scripts/run_record.py`](scripts/run_record.py) | Pins the skill version at the start of a run, writes the run's record, checks the stored records and looks earlier ones up |
 
 ## Procedure
 
 Run the commands from the root of the repository that receives the skill.
 The commands name this skill's folder as `.skills/skills-creator`; when the folder lives elsewhere, use its path instead.
 
-1. **Open the task.** Read the [skill format](references/skill-format.md) and the [writing rules](references/writing-rules.md) in full.
+1. **Open the run.** Read the [skill format](references/skill-format.md) and the [writing rules](references/writing-rules.md) in full.
    Read the repository's instruction file, when it has one, and the `SKILL.md` of every skill already in the skills directory ([Location and naming](references/skill-format.md#location-and-naming)), together in one step.
+   Run the command below and keep the returned `run_ref` ([Opening the run](references/run-evaluation.md#opening-the-run)); from this step on, note each step and each decision with its basis ([Notes of the run](references/run-evaluation.md#notes-of-the-run)).
+
+   ```powershell
+   python -B .skills/skills-creator/scripts/run_record.py start --skill .skills/skills-creator
+   ```
+
 2. **Analyze the request.** Settle what one run of the skill carries out, the requests that open it and the nearby requests it must not take, what a run produces, which document owns each decision of the work ([One owner per rule](references/writing-rules.md#one-owner-per-rule)), and the steps of a run.
    Investigate what the repository and the conversation already answer.
    Ask only about the missing decisions that change the skill, all of them in one message, and wait for the answers; a request that overlaps an existing skill is one of them ([Description](references/writing-rules.md#description)).
+   When the user asks to improve a skill from its run records, read them first and group their issues per [Reading earlier records](references/run-evaluation.md#reading-earlier-records).
 3. **Choose the size and the name** ([The two sizes](references/skill-format.md#the-two-sizes), [Location and naming](references/skill-format.md#location-and-naming)); for a full skill, also the name of the artifact.
 4. **Scaffold the skill.**
-   When the user asks to adjust an existing skill, skip this step: steps 5 to 9 apply to the files that change.
+   When the user asks to adjust or improve an existing skill, skip this step: steps 5 to 8 apply to the files that change.
 
    ```powershell
    python -B .skills/skills-creator/scripts/new_skill.py --name <name> --size <thin|full> [--artifact <artifact>] [--skills-dir <dir>]
    ```
 
 5. **Write the content.** Replace every `<...>` placeholder of `SKILL.md` per the [Body](references/skill-format.md#body) and [Frontmatter](references/skill-format.md#frontmatter) sections and the [writing rules](references/writing-rules.md); a line of the form `<If ...: ...>` stays only when its condition holds.
+   Keep the steps that open the run and that evaluate and record it as the template gives them, and renumber them when steps are added between them.
    For a full skill, write the [format reference](references/skill-format.md#format-reference) first, then the [output template](references/skill-format.md#output-template), then adapt the [helper script](references/skill-format.md#helper-script) to what a tool can compute, or remove it when there is nothing to compute.
    Run each script once against a temporary directory and read its output.
    An adjusted skill gets its `version` bumped per [Frontmatter](references/skill-format.md#frontmatter).
@@ -71,6 +81,12 @@ The commands name this skill's folder as `.skills/skills-creator`; when the fold
 
 8. **Re-read against the three scenarios** of the [writing rules](references/writing-rules.md#re-reading-against-three-scenarios).
    A scenario that fails goes back to step 5; after a change of the `name` or the `description`, steps 6 and 7 run again.
-9. **Clean up** the temporary directories and files the run created.
-10. **Report** the skill folder and each file written, the instruction file that registers the skill, the result of the validator, the three scenarios read and what remains open.
+9. **Evaluate and record.** The run is evaluated, in a separate agent when the host can create one, and each issue that meets the threshold improves this skill within the run ([Evaluating the run](references/run-evaluation.md#evaluating-the-run), [Applying an improvement](references/run-evaluation.md#applying-an-improvement)); then exactly one record is written, which `append` also checks ([Record](references/run-evaluation.md#record)):
+
+   ```powershell
+   python -B .skills/skills-creator/scripts/run_record.py append --input <JSON file>
+   ```
+
+10. **Clean up** the temporary directories and files the run created.
+11. **Report** the skill folder and each file written, the instruction file that registers the skill, the result of the validator, the three scenarios read and what remains open, then the evaluation of the run ([Reporting](references/run-evaluation.md#reporting)).
     Stop there: the new skill runs only when the user asks for the work it carries out.

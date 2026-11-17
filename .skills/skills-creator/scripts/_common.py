@@ -1,4 +1,4 @@
-"""Shared code of the skills-creator scripts: reading a skill, the names and the registration block.
+"""Shared code of the skills-creator scripts: reading a skill, its sections, the names and the registration block.
 
 The rules these helpers apply are owned by ../references/skill-format.md; this module only reads and computes.
 """
@@ -22,6 +22,12 @@ RESOURCE_FOLDERS = ("assets", "references", "scripts")
 BLOCK_START = "<!-- skills:start -->"
 BLOCK_END = "<!-- skills:end -->"
 BLOCK = re.compile(re.escape(BLOCK_START) + r".*?" + re.escape(BLOCK_END), re.S)
+FENCE = re.compile(r"(?ms)^[ \t]*(`{3,}|~{3,})[^\n]*\n.*?^[ \t]*\1[ \t]*$")
+HEADING = re.compile(r"(?m)^(#{1,6}) (.+?)\s*$")
+STEP = re.compile(r"(?m)^(\d+)\. (.*)$")
+# The tool that opens and records every run of a skill, and the folder of the skills directory that keeps the records.
+RECORD_TOOL = "run_record.py"
+RECORDS = ".records"
 
 
 class SkillError(Exception):
@@ -110,6 +116,26 @@ def read_skill(skill: Path) -> tuple[dict[str, Any], str]:
     if not entry.is_file():
         raise SkillError(f"{skill.name}: SKILL.md is missing")
     return parse_frontmatter(entry.read_text(encoding="utf-8"), f"{skill.name}/SKILL.md")
+
+
+def without_fences(text: str) -> str:
+    return FENCE.sub("", text)
+
+
+def sections(body: str) -> tuple[list[str], str, dict[str, str]]:
+    """The level-one headings, the text between the title and the first section, and each level-two section."""
+
+    plain = without_fences(body)
+    titles = [heading for marks, heading in HEADING.findall(plain) if marks == "#"]
+    parts = re.split(r"(?m)^## (.+?)\s*$", plain)
+    opening = HEADING.sub("", parts[0]).strip()
+    return titles, opening, {parts[i]: parts[i + 1] for i in range(1, len(parts), 2)}
+
+
+def procedure_steps(body: str) -> list[tuple[int, str]]:
+    """The numbered steps of the Procedure section: number and the text of the step's first line."""
+
+    return [(int(number), text) for number, text in STEP.findall(sections(body)[2].get("Procedure", ""))]
 
 
 def skill_folders(skills_dir: Path) -> list[Path]:

@@ -15,21 +15,14 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _common import (DESCRIPTION_LIMIT, NAME_LIMIT, RESOURCE_FOLDERS, SEMVER, SLUG, SkillError, emit, read_skill,  # noqa: E402
-                     resolve, shown, skill_folders)
+from _common import (DESCRIPTION_LIMIT, HEADING, NAME_LIMIT, RECORD_TOOL, RESOURCE_FOLDERS, SEMVER, SLUG, SkillError, emit,  # noqa: E402
+                     procedure_steps, read_skill, resolve, sections, shown, skill_folders, without_fences)
 from register_skills import register  # noqa: E402
 
-FENCE = re.compile(r"(?ms)^[ \t]*(`{3,}|~{3,})[^\n]*\n.*?^[ \t]*\1[ \t]*$")
 CODE_SPAN = re.compile(r"`[^`\n]*`")
 LINK = re.compile(r"\[[^\]]*\]\(([^)\s]+)\)")
-HEADING = re.compile(r"(?m)^(#{1,6}) (.+?)\s*$")
 PLACEHOLDER = re.compile(r"\{\{[^{}\n]*\}\}|<(?!!--)(?![a-z][a-z0-9+.-]*:)[^<>\n]+>")
-STEP = re.compile(r"(?m)^(\d+)\. (.*)$")
 SECTIONS = ("When to use", "Resources", "Procedure")
-
-
-def without_fences(text: str) -> str:
-    return FENCE.sub("", text)
 
 
 def anchors(text: str) -> set[str]:
@@ -37,16 +30,6 @@ def anchors(text: str) -> set[str]:
 
     return {re.sub(r"[^\w\- ]", "", heading.strip().lower()).replace(" ", "-")
             for _, heading in HEADING.findall(without_fences(text))}
-
-
-def sections(body: str) -> tuple[list[str], str, dict[str, str]]:
-    """The level-one headings, the text between the title and the first section, and each level-two section."""
-
-    plain = without_fences(body)
-    titles = [heading for marks, heading in HEADING.findall(plain) if marks == "#"]
-    parts = re.split(r"(?m)^## (.+?)\s*$", plain)
-    opening = HEADING.sub("", parts[0]).strip()
-    return titles, opening, {parts[i]: parts[i + 1] for i in range(1, len(parts), 2)}
 
 
 def check_frontmatter(skill: Path, root: Path, meta: dict) -> list[str]:
@@ -74,23 +57,22 @@ def check_frontmatter(skill: Path, root: Path, meta: dict) -> list[str]:
     return errors
 
 
-def check_body(body: str, has_resources: bool) -> list[str]:
+def check_body(body: str) -> list[str]:
     errors = []
     titles, opening, found = sections(body)
     if len(titles) != 1:
         errors.append(f"the body must have exactly one level-one title; it has {len(titles)}")
     if not opening:
         errors.append("the paragraph that says what the skill carries out and what it owns is missing below the title")
-    expected = [name for name in SECTIONS if name != "Resources" or has_resources]
-    if list(found) != expected:
-        errors.append(f"the level-two sections must be, in this order: {', '.join(expected)}; found: {', '.join(found) or 'none'}")
+    if list(found) != list(SECTIONS):
+        errors.append(f"the level-two sections must be, in this order: {', '.join(SECTIONS)}; found: {', '.join(found) or 'none'}")
     if "When to use" in found and not re.search(r"(?m)^- \S", found["When to use"]):
         errors.append("When to use must list when the skill applies and when it does not")
     if "Procedure" in found:
-        steps = STEP.findall(found["Procedure"])
-        if [int(number) for number, _ in steps] != list(range(1, len(steps) + 1)) or len(steps) < 2:
+        steps = procedure_steps(body)
+        if [number for number, _ in steps] != list(range(1, len(steps) + 1)) or len(steps) < 2:
             errors.append("Procedure must be a list of at least two steps numbered from 1 without gaps")
-        unnamed = [number for number, text in steps if not re.match(r"\*\*[^*]+\*\*", text)]
+        unnamed = [str(number) for number, text in steps if not re.match(r"\*\*[^*]+\*\*", text)]
         if unnamed:
             errors.append(f"each step starts with its name in bold; missing at step {', '.join(unnamed)}")
     left = PLACEHOLDER.findall(CODE_SPAN.sub("", without_fences(body)))
@@ -110,6 +92,8 @@ def check_resources(skill: Path, resources: dict[str, list[Path]]) -> list[str]:
                for entry in sorted(skill.iterdir()) if entry.is_dir() and entry.name not in (*RESOURCE_FOLDERS, "__pycache__")]
     text = without_fences((skill / "SKILL.md").read_text(encoding="utf-8"))
     linked = {(skill / target.partition("#")[0]).resolve() for target in LINK.findall(text) if not re.match(r"[a-z][a-z0-9+.-]*:", target)}
+    if RECORD_TOOL not in {path.name for path in linked}:
+        errors.append(f"the Resources table must link the record tool {RECORD_TOOL}: every run of a skill is opened and recorded with it")
     for files in resources.values():
         for path in files:
             # A file whose name starts with an underscore is shared code of the scripts, not a resource of its own.
@@ -162,7 +146,7 @@ def check_skill(skill: Path, root: Path) -> list[str]:
     except SkillError as exc:
         return [str(exc)]
     resources = resource_files(skill)
-    errors = (check_frontmatter(skill, root, meta) + check_body(body, any(resources.values())) + check_resources(skill, resources)
+    errors = (check_frontmatter(skill, root, meta) + check_body(body) + check_resources(skill, resources)
               + check_links(skill) + check_scripts(skill, resources))
     return [f"{skill.name}: {error}" for error in errors]
 

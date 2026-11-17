@@ -26,12 +26,19 @@ This skill owns the order of the steps, the <artifact> format and the helper scr
 | [`assets/{{artifact}}-template.md`](assets/{{artifact}}-template.md) | Template of one <artifact> |
 | [`references/{{artifact}}-format.md`](references/{{artifact}}-format.md) | <Fields, sections, file naming and output location> |
 | [`scripts/new_{{artifact_snake}}.py`](scripts/new_{{artifact_snake}}.py) | Creates the <artifact> file from the template, with <the computed values> filled in |
+| [`run_record.py`]({{creator_rel}}/scripts/run_record.py) | Pins the skill version at the start of a run and writes the run's record |
 
 ## Procedure
 
 Run the commands from the repository root.
 
-1. **<Open the task>.** <What to read and apply before deciding anything>.
+1. **Open the run.** <What to read and apply before deciding anything>.
+   Run the command below and keep the returned `run_ref` ([Opening the run]({{creator_rel}}/references/run-evaluation.md#opening-the-run)); from this step on, note each step and each decision with its basis ([Notes of the run]({{creator_rel}}/references/run-evaluation.md#notes-of-the-run)).
+
+   ```powershell
+   python -B {{creator_path}}/scripts/run_record.py start --skill {{skill_path}}
+   ```
+
 2. **<Step name>.** <What to do, when it is done, and the section that owns the rule the step applies>.
 3. **Create the file** in the directory the user named, or by default in <the default directory> ([format](references/{{artifact}}-format.md#location-and-naming)):
 
@@ -41,5 +48,11 @@ Run the commands from the repository root.
 
    Replace every `<...>` placeholder of the file per the [format](references/{{artifact}}-format.md#placeholders-in-the-template).
 4. **Self-verify.** <The check of the file against the request and the format that the agent can perform; what is fixed before reporting>.
-5. **Clean up.** <What the run created temporarily and removes>.
-6. **Report.** <The file written, how it was verified and what remains open>.
+5. **Evaluate and record.** The run is evaluated, in a separate agent when the host can create one, and each issue that meets the threshold improves the skill within the run ([Evaluating the run]({{creator_rel}}/references/run-evaluation.md#evaluating-the-run), [Applying an improvement]({{creator_rel}}/references/run-evaluation.md#applying-an-improvement)); then exactly one record is written, which `append` also checks ([Record]({{creator_rel}}/references/run-evaluation.md#record)):
+
+   ```powershell
+   python -B {{creator_path}}/scripts/run_record.py append --input <JSON file>
+   ```
+
+6. **Clean up.** <What the run created temporarily and removes>.
+7. **Report.** <The file written, how it was verified and what remains open>, then the evaluation of the run ([Reporting]({{creator_rel}}/references/run-evaluation.md#reporting)).

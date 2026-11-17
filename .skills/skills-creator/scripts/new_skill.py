@@ -2,13 +2,14 @@
 """Create the folder of a new skill from the skills-creator templates, with the computed values filled in.
 
 The layout and naming rules are owned by ../references/skill-format.md; this script fills only what a tool can
-compute (the name, the id, the resource file names, the path of the skill) and leaves every <...> placeholder to
+compute (the name, the id, the resource file names, the paths of the skill and of the record tool) and leaves every <...> placeholder to
 the agent that writes the skill. It never overwrites a file: it refuses when the skill folder exists.
 """
 
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -46,7 +47,11 @@ def create(root: Path, skills_dir: str, name: str, size: str, artifact: str | No
     if folder.exists():
         raise SkillError(f"{shown(folder, root)} already exists; edit that skill instead of creating it")
     path = shown(folder, root)
-    values = {"{{name}}": name, "{{id}}": path, "{{skill_path}}": path}
+    try:
+        creator_rel = Path(os.path.relpath(SKILL, folder)).as_posix()
+    except ValueError:  # no relative path between two drives
+        creator_rel = SKILL.as_posix()
+    values = {"{{name}}": name, "{{id}}": path, "{{skill_path}}": path, "{{creator_path}}": shown(SKILL, root), "{{creator_rel}}": creator_rel}
     if artifact:
         values.update({"{{artifact}}": artifact, "{{artifact_snake}}": artifact.replace("-", "_")})
     files = {}

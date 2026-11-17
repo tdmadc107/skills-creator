@@ -1,7 +1,7 @@
 # Skill format
 
 The `skills-creator` skill owns how a skill is laid out, named, stored and registered.
-How the content of a skill is worded belongs to the [writing rules](writing-rules.md).
+How the content of a skill is worded belongs to the [writing rules](writing-rules.md); how a run of a skill is recorded, evaluated and turned into improvements belongs to [Run evaluation](run-evaluation.md).
 
 ## Location and naming
 
@@ -33,7 +33,9 @@ A full skill names its resources after the artifact, in kebab-case for Markdown 
 - The template and its format reference always come together.
 - A script exists only for what a tool can compute or check.
   When a skill has nothing of that kind, remove the script, its folder and its row in the Resources table.
+- Every skill, thin or full, depends on the `skills-creator` folder of the same repository: its steps run the record tool there and link to its run evaluation, so a skill is moved to another repository together with `skills-creator`.
 - A resource folder that exists holds at least one file, and the skill folder holds no other folder.
+- The records of the runs live outside the skill folders, in `<skills directory>/.records/` ([Record](run-evaluation.md#record)).
 - Knowledge that belongs to one repository lives in that repository's own documentation, not in a skill.
 
 ## Frontmatter
@@ -59,12 +61,14 @@ The body has one level-one title and these level-two sections, in this order, an
 2. **Opening paragraph.** One sentence that says what one run carries out, then who owns what: the documents that own the decisions, and what the skill itself owns (the order of the steps; for a full skill also the artifact format and the helper script).
    When the steps point to sections of other documents, the paragraph ends with the sentence that those sections decide.
 3. **`## When to use`.** One list item for the requests that open the skill, and one for the nearby requests it must not take, each with where that work goes instead.
-4. **`## Resources`.** Present only when the skill has resources: a table with the columns `Resource` and `Use`, one row per file of `assets/`, `references/` and `scripts/`, each linked, and one row per tool outside the skill that a step runs.
+4. **`## Resources`.** A table with the columns `Resource` and `Use`: one row per file of `assets/`, `references/` and `scripts/`, each linked, and one row per tool outside the skill that a step runs.
+   Every skill has the row of the record tool, `scripts/run_record.py` of `skills-creator`, linked by its relative path.
    A file whose name starts with an underscore is shared code of the scripts and gets no row.
 5. **`## Procedure`.** The steps of one run, numbered from 1.
    Each step starts with its name in bold, then says what to do and links to the section that owns the rule it applies.
    A command sits in a fenced code block under its step, with `<...>` for the values the agent supplies; when the procedure has commands, a line above the list says where they run from.
-   The last steps verify the output, clean up what the run created temporarily and report.
+   The first step opens the run: it reads what the run needs and runs `start` of the record tool ([Opening the run](run-evaluation.md#opening-the-run)).
+   The last steps verify the output, evaluate the run and write its record ([Run evaluation](run-evaluation.md)), clean up what the run created temporarily and report.
    When the skill must not start a following kind of work on its own, the last step says so.
 
 ## Format reference
