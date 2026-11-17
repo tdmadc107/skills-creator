@@ -204,6 +204,17 @@ def registration_targets(root: Path, create: str = INSTRUCTION_FILES[0]) -> list
 
     agents, claude = (root / name for name in INSTRUCTION_FILES)
     targets = [agents] if agents.is_file() else []
-    if claude.is_file() and not (targets and "AGENTS.md" in claude.read_text(encoding="utf-8")):
+    if claude.is_file() and not (targets and loads_agents_md(claude, agents)):
         targets.append(claude)
     return targets or [root / create]
+
+
+def loads_agents_md(claude: Path, agents: Path) -> bool:
+    """True when CLAUDE.md brings AGENTS.md into the session itself: an `@AGENTS.md` import, or a link to that file.
+
+    A sentence that only names AGENTS.md does not load it, so such a CLAUDE.md still needs the block of its own.
+    """
+
+    if claude.resolve() == agents.resolve():
+        return True
+    return re.search(r"(?m)(?:^|\s)@(?:\./)?AGENTS\.md(?:\s|$)", claude.read_text(encoding="utf-8")) is not None

@@ -16,7 +16,7 @@ The first command tests the skill and its scripts; the second tests the npm inst
 
 ## Continuous integration and releases
 
-- [`ci.yml`](.github/workflows/ci.yml) runs the Python tests on Python 3.9 and 3.13 and the installer tests on Node 18, 22 and 24, on every push and pull request.
+- [`ci.yml`](.github/workflows/ci.yml) runs the Python tests on Python 3.9 and 3.13 and the installer tests on Node 18, 22 and 24, on every push to `main` and on every pull request.
 - [`publish.yml`](.github/workflows/publish.yml) publishes `skills-generator` to npm when a tag `v<major>.<minor>.<patch>` is pushed.
   It runs the CI first, then checks that the tag equals the `version` of `package.json`, that this version equals the `metadata.version` of `SKILL.md`, that [`CHANGELOG.md`](CHANGELOG.md) has the heading `## [<version>] - <YYYY-MM-DD>`, that the tagged commit is on `main` and that the version is not on npm yet.
 
@@ -31,10 +31,10 @@ git tag v<version>
 git push origin v<version>
 ```
 
-The publish job runs in the GitHub environment `npm`, which GitHub creates on the first run; protection rules, such as a required reviewer, are added there.
+The publish job runs in the GitHub environment `npm`: create it in **Settings → Environments → New environment** before the first release, so that its secret and its protection rules, such as a required reviewer, are in place when the job runs.
 It authenticates in one of two ways:
 
-1. **First release: a token.** Create a granular access token on npmjs.com with permission to publish, and save it as the secret `NPM_TOKEN` of the repository or of the environment `npm`.
+1. **First release: a token.** Create a granular access token on npmjs.com with permission to publish, and save it as the secret `NPM_TOKEN` of the environment `npm`, or of the repository.
 2. **Later releases: trusted publishing.** Once the package exists, open its settings on npmjs.com and add a trusted publisher: GitHub Actions, repository `tdmadc107/skills-creator`, workflow `publish.yml`, environment `npm`.
    npm then authenticates the workflow through OIDC, and the secret `NPM_TOKEN` can be deleted and the token revoked.
 

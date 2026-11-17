@@ -272,6 +272,24 @@ class RegistrationTests(Repository):
         (self.root / "CLAUDE.md").write_text("@AGENTS.md\n", encoding="utf-8")
         self.assertEqual(self.register(), {"AGENTS.md": "unchanged"})
         self.assertEqual((self.root / "CLAUDE.md").read_text(encoding="utf-8"), "@AGENTS.md\n")
+        (self.root / "CLAUDE.md").write_text("# Claude\n\nRead @./AGENTS.md first.\n", encoding="utf-8")
+        self.assertEqual(self.register(), {"AGENTS.md": "unchanged"})
+
+    def test_a_claude_md_that_only_names_agents_md_gets_the_block_too(self):
+        # Claude Code reads CLAUDE.md instead of AGENTS.md; a sentence naming AGENTS.md does not load it.
+        self.write_skill("alpha")
+        (self.root / "AGENTS.md").write_text("# Agents\n", encoding="utf-8")
+        (self.root / "CLAUDE.md").write_text("# Claude\n\nFollow the rules in AGENTS.md.\n", encoding="utf-8")
+        self.assertEqual(self.register(), {"AGENTS.md": "updated", "CLAUDE.md": "updated"})
+        self.assertIn("<!-- skills:start -->", (self.root / "CLAUDE.md").read_text(encoding="utf-8"))
+
+    @unittest.skipIf(sys.platform == "win32", "creating a symlink needs extra rights on Windows")
+    def test_a_claude_md_linked_to_agents_md_is_written_once(self):
+        self.write_skill("alpha")
+        (self.root / "AGENTS.md").write_text("# Agents\n", encoding="utf-8")
+        (self.root / "CLAUDE.md").symlink_to("AGENTS.md")
+        self.assertEqual(self.register(), {"AGENTS.md": "updated"})
+        self.assertEqual((self.root / "AGENTS.md").read_text(encoding="utf-8").count("<!-- skills:start -->"), 1)
 
     def test_line_endings_of_the_file_are_kept(self):
         self.write_skill("alpha")
