@@ -1,6 +1,6 @@
 name: Publish to npm
 
-# Runs when a version tag is pushed, for example: git tag v1.3.0 && git push origin v1.3.0
+# Runs when a version tag is pushed, for example: git tag v1.0.0 && git push origin v1.0.0
 on:
   push:
     tags: ["v*"]
