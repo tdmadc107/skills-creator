@@ -63,7 +63,8 @@ def create(root: Path, skills_dir: str, name: str, size: str, artifact: str | No
     for target, text in files.items():
         destination = folder / target
         destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_text(text, encoding="utf-8", newline="\n")
+        with destination.open("w", encoding="utf-8", newline="\n") as handle:
+            handle.write(text)
     return {"path": path, "name": name, "size": size, "files": [f"{path}/{target}" for target in files]}
 
 

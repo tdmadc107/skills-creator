@@ -303,7 +303,8 @@ def append(root: Path, data: Any) -> dict[str, Any]:
     ignore = folder / ".gitignore"
     if not ignore.exists():
         # Records describe the user's projects, so they stay out of Git until the user decides otherwise; an existing file is never changed.
-        ignore.write_text("*\n", encoding="utf-8", newline="\n")
+        with ignore.open("w", encoding="utf-8", newline="\n") as handle:
+            handle.write("*\n")
     with target.open("a", encoding="utf-8", newline="\n") as handle:
         handle.write(json.dumps(record, ensure_ascii=False) + "\n")
     result = {"passed": True, "record_id": record_id, "path": shown(target, root)}

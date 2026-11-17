@@ -42,7 +42,8 @@ def create(root: Path, slug: str, out_dir: str) -> dict[str, str]:
         raise InputError(f"{shown(target, root)} already exists")
     text = TEMPLATE.read_text(encoding="utf-8").replace("{{created_at}}", now.isoformat(timespec="seconds"))
     base.mkdir(parents=True, exist_ok=True)
-    target.write_text(text, encoding="utf-8", newline="\n")
+    with target.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(text)
     return {"path": shown(target, root)}
 
 

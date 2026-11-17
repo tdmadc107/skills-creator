@@ -3,11 +3,15 @@
 This repository is the source of the `skills-creator` skill, which lives in [`.skills/skills-creator/`](.skills/skills-creator/SKILL.md).
 
 - A request to create or adjust a skill, including the skill of this repository, runs through that skill.
-- After a change to the skill or to its scripts, run the tests from the repository root:
+- After a change to the skill, to its scripts or to the installer in `bin/`, run the tests from the repository root:
 
   ```powershell
   python -B -m unittest discover -s tests -p "test_*.py"
+  node --test tests/installer.test.mjs
   ```
+
+- The package version and the skill version are one version: a change that bumps `metadata.version` in `SKILL.md` bumps `version` in `package.json` to the same value, and a test fails while they differ.
+- A release is published by the [publish workflow](.github/workflows/publish.yml) when the user pushes a tag; create or push a tag only when the user asks for a release, as described in the [README](README.md#continuous-integration-and-releases).
 
 - Commit or push only when the user asks.
 
