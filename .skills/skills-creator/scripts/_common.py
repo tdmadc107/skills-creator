@@ -28,6 +28,9 @@ STEP = re.compile(r"(?m)^(\d+)\. (.*)$")
 # The tool that opens and records every run of a skill, and the folder of the skills directory that keeps the records.
 RECORD_TOOL = "run_record.py"
 RECORDS = ".records"
+# The two steps that end every procedure, in this order; a record covers every step before them.
+CLOSING_STEPS = ("Evaluate and record", "Report")
+STEP_NAME = re.compile(r"\*\*([^*]+?)\.?\*\*")
 
 
 class SkillError(Exception):
@@ -136,6 +139,23 @@ def procedure_steps(body: str) -> list[tuple[int, str]]:
     """The numbered steps of the Procedure section: number and the text of the step's first line."""
 
     return [(int(number), text) for number, text in STEP.findall(sections(body)[2].get("Procedure", ""))]
+
+
+def step_name(text: str) -> str:
+    """The bold name a step starts with, without its closing period; empty when the step has none."""
+
+    match = STEP_NAME.match(text)
+    return match.group(1).strip() if match else ""
+
+
+def recorded_steps(body: str, where: str) -> int:
+    """The number of steps a record covers: every step before the two closing steps."""
+
+    names = [step_name(text) for _, text in procedure_steps(body)]
+    if len(names) < len(CLOSING_STEPS) + 1 or tuple(names[-len(CLOSING_STEPS):]) != CLOSING_STEPS:
+        raise SkillError(f"{where}: the Procedure must end with the steps {' and '.join(f'**{name}**' for name in CLOSING_STEPS)}, "
+                         "in this order, after at least one step of its own work")
+    return len(names) - len(CLOSING_STEPS)
 
 
 def skill_folders(skills_dir: Path) -> list[Path]:

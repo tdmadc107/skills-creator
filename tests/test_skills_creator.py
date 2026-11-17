@@ -44,7 +44,9 @@ Carries out one unit of work.
 ## Procedure
 
 1. **Open the task.** Read the inputs.
-2. **Report.** Say what changed.
+2. **Clean up.** Remove the temporary files.
+3. **Evaluate and record.** Write the record.
+4. **Report.** Say what changed.
 """
 
 
@@ -138,7 +140,7 @@ class NewSkillTests(Repository):
         self.assertEqual(command.groups(), (".skills/skills-creator/scripts/run_record.py", ".skills/release-notes"))
         self.assertIn("](../skills-creator/scripts/run_record.py)", text)
         code, opened = run("run_record.py", self.root, "start", "--skill", command.group(2))
-        self.assertEqual((code, opened["run_ref"]["skill"], opened["run_ref"]["steps"]), (0, "release-notes", 6), opened)
+        self.assertEqual((code, opened["run_ref"]["skill"], opened["run_ref"]["recorded_steps"]), (0, "release-notes", 4), opened)
 
     def test_full_skill_is_scaffolded_and_its_script_creates_the_artifact(self):
         code, result = self.new_skill("--name", "incident-report", "--size", "full", "--artifact", "post-mortem")
@@ -283,7 +285,7 @@ class RecordTests(Repository):
             "run_ref": self.ref,
             "request": "Do the work for the order page",
             "outcome": {"status": "completed", "summary": "The work is done."},
-            "steps": [{"step": 1, "status": "done", "note": "Read the inputs."}, {"step": 2, "status": "pending", "note": "Will report."}],
+            "steps": [{"step": 1, "status": "done", "note": "Read the inputs."}, {"step": 2, "status": "done", "note": "Removed the temporary files."}],
             "decisions": [{"id": "DEC-01", "step": 1, "decision": "Read only the order page.", "basis": "The user named the order page."}],
             "evaluation": {"mode": "agent", "result": "clean"},
             "issues": [],
@@ -307,13 +309,18 @@ class RecordTests(Repository):
         return run("run_record.py", self.root, "append", "--input", str(source))
 
     def test_start_pins_the_skill_and_writes_nothing(self):
-        self.assertEqual((self.ref["skill"], self.ref["path"], self.ref["version"], self.ref["steps"]), ("work", ".skills/work", "1.0.0", 2))
+        self.assertEqual((self.ref["skill"], self.ref["path"], self.ref["version"], self.ref["recorded_steps"]), ("work", ".skills/work", "1.0.0", 2))
         self.assertRegex(self.ref["digest"], r"^[0-9a-f]{12}$")
         self.assertFalse((self.root / ".skills/.records").exists())
         entry = self.root / ".skills/work/SKILL.md"
         entry.write_text(entry.read_text(encoding="utf-8").replace("Read the inputs.", "Read every input."), encoding="utf-8")
         self.assertNotEqual(run("run_record.py", self.root, "start", "--skill", ".skills/work")[1]["run_ref"]["digest"], self.ref["digest"])
         self.assertEqual(run("run_record.py", self.root, "start", "--skill", ".skills/missing")[0], 1)
+        # A procedure that does not end with the two closing steps gives no number of steps to record.
+        entry.write_text(entry.read_text(encoding="utf-8").replace("**Evaluate and record.**", "**Record.**"), encoding="utf-8")
+        code, result = run("run_record.py", self.root, "start", "--skill", ".skills/work")
+        self.assertEqual(code, 1)
+        self.assertIn("must end with the steps", result["errors"][0])
 
     def test_a_record_is_stored_as_one_line_and_kept_out_of_git(self):
         code, first = self.append(self.record())
@@ -361,7 +368,7 @@ class RecordTests(Repository):
             "steps: one entry per step": self.record(steps=steps[:1]),
             "steps[2].status": self.record(steps=[steps[0], {**steps[1], "status": "ok"}]),
             "steps[1].note": self.record(steps=[{**steps[0], "note": ""}, steps[1]]),
-            "`pending` marks only the steps that follow": self.record(steps=[{**steps[0], "status": "pending"}, steps[1]]),
+            "steps[2].status: expected one of": self.record(steps=[steps[0], {**steps[1], "status": "pending"}]),
             "decisions[1].basis": self.record(decisions=[{"id": "DEC-01", "step": 1, "decision": "Chose.", "basis": ""}]),
             "decisions[1].step": self.record(decisions=[{"id": "DEC-01", "step": 3, "decision": "Chose.", "basis": "Rule."}]),
             "DEC-01 is used twice": self.record(decisions=self.record()["decisions"] * 2),
@@ -440,8 +447,10 @@ class ValidatorTests(Repository):
             "what it owns is missing": lambda t: t.replace("Carries out one unit of work.\n", ""),
             "level-two sections": lambda t: t.replace("## When to use", "## Usage"),
             "When to use must list": lambda t: t.replace("- The user asks for the work.\n- Not for other work.\n", "Always.\n"),
-            "numbered from 1 without gaps": lambda t: t.replace("2. **Report.**", "3. **Report.**"),
-            "name in bold": lambda t: t.replace("2. **Report.** Say", "2. Report: say"),
+            "numbered from 1 without gaps": lambda t: t.replace("4. **Report.**", "5. **Report.**"),
+            "name in bold": lambda t: t.replace("4. **Report.** Say", "4. Report: say"),
+            "must end with the steps": lambda t: t.replace("3. **Evaluate and record.** Write the record.\n4. **Report.** Say what changed.",
+                                                           "3. **Report.** Say what changed.\n4. **Evaluate and record.** Write the record."),
             "placeholder(s) outside code": lambda t: t.replace("Read the inputs.", "Read <the inputs>."),
             "names a file that does not exist": lambda t: t.replace("Read the inputs.", "Read the [rules](rules.md)."),
             "names a heading that does not exist": lambda t: t.replace("Read the inputs.", "Read [this](#no-such-heading)."),

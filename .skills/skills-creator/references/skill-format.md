@@ -69,8 +69,9 @@ The body has these five parts, in this order, and no level-two section other tha
    Each step starts with its name in bold, then says what to do and links to the section that owns the rule it applies.
    A command sits in a fenced code block under its step, with `<...>` for the values the agent supplies; when the procedure has commands, a line above the list says where they run from.
    The first step opens the run: it reads what the run needs and runs `start` of the record tool ([Opening the run](run-evaluation.md#opening-the-run)).
-   The last steps verify the output, evaluate the run and write its record ([Run evaluation](run-evaluation.md)), clean up what the run created temporarily and report.
-   When the skill must not start a following kind of work on its own, the last step says so.
+   The steps of the work end with the verification of the output and the cleanup of what the run created temporarily.
+   Then come the two closing steps, named exactly so and in this order: **Evaluate and record** ([Run evaluation](run-evaluation.md)) and **Report**.
+   When the skill must not start a following kind of work on its own, the report says so.
 
 ## Format reference
 

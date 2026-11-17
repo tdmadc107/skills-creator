@@ -18,13 +18,13 @@ from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _common import RECORDS, SEMVER, SKILLS_DIR, SLUG, SkillError, emit, procedure_steps, read_skill, resolve, shown  # noqa: E402
+from _common import RECORDS, SEMVER, SKILLS_DIR, SLUG, SkillError, emit, read_skill, recorded_steps, resolve, shown  # noqa: E402
 
 SCHEMA = "skill-record/v1"
 FIELDS = ("run_ref", "request", "outcome", "steps", "decisions", "evaluation", "issues", "fixes", "supersedes")
-RUN_REF = ("skill", "path", "version", "digest", "steps", "started_at")
+RUN_REF = ("skill", "path", "version", "digest", "recorded_steps", "started_at")
 OUTCOMES = ("completed", "blocked", "failed")
-STEP_STATUSES = ("done", "skipped", "blocked", "failed", "not_reached", "pending")
+STEP_STATUSES = ("done", "skipped", "blocked", "failed", "not_reached")
 MODES = ("agent", "self")
 RESULTS = ("clean", "issues")
 CAUSES = ("instruction", "ineffective_fix", "input", "execution")
@@ -53,15 +53,13 @@ def digest(skill: Path) -> str:
 def start(root: Path, skill_arg: str) -> dict[str, Any]:
     skill = resolve(skill_arg, root)
     meta, body = read_skill(skill)
-    steps = procedure_steps(body)
-    if not steps:
-        raise SkillError(f"{skill.name}/SKILL.md has no numbered step in its Procedure section")
+    covered = recorded_steps(body, f"{skill.name}/SKILL.md")
     return {"run_ref": {
         "skill": str(meta.get("name", "")),
         "path": shown(skill, root),
         "version": str((meta.get("metadata") or {}).get("version", "")),
         "digest": digest(skill),
-        "steps": len(steps),
+        "recorded_steps": covered,
         "started_at": datetime.now().astimezone().isoformat(timespec="seconds"),
     }}
 
@@ -122,7 +120,7 @@ def unique_id(item: dict[str, Any], pattern: re.Pattern, seen: set[str], label: 
 
 
 def check_run_ref(ref: Any, errors: list[str]) -> int:
-    """Check the object `start` returned; return the number of steps of the procedure it pinned."""
+    """Check the object `start` returned; return the number of steps the record covers."""
 
     if not isinstance(ref, dict) or set(ref) != set(RUN_REF):
         errors.append(f"run_ref: copy the object `start` returned, with exactly {', '.join(RUN_REF)}")
@@ -139,10 +137,10 @@ def check_run_ref(ref: Any, errors: list[str]) -> int:
             raise ValueError
     except ValueError:
         errors.append("run_ref.started_at: expected the ISO-8601 timestamp with a UTC offset that `start` returned")
-    if type(ref["steps"]) is not int or ref["steps"] < 1:
-        errors.append("run_ref.steps: expected the number of steps `start` returned")
+    if type(ref["recorded_steps"]) is not int or ref["recorded_steps"] < 1:
+        errors.append("run_ref.recorded_steps: expected the number `start` returned")
         return 0
-    return ref["steps"]
+    return ref["recorded_steps"]
 
 
 def check_record(data: dict[str, Any]) -> list[str]:
@@ -161,13 +159,10 @@ def check_record(data: dict[str, Any]) -> list[str]:
 
     steps = entries(data["steps"], "steps", errors)
     if total and [item.get("step") for item in steps] != list(range(1, total + 1)):
-        errors.append(f"steps: one entry per step of the procedure, in order, numbered 1 to {total}")
+        errors.append(f"steps: one entry per step before the closing steps, in order, numbered 1 to {total}")
     for index, item in enumerate(steps, 1):
         choice(item.get("status"), STEP_STATUSES, f"steps[{index}].status", errors)
         text(item.get("note"), f"steps[{index}].note", errors)
-    statuses = [item.get("status") for item in steps]
-    if "pending" in statuses and (statuses[0] == "pending" or set(statuses[statuses.index("pending"):]) != {"pending"}):
-        errors.append("steps: `pending` marks only the steps that follow the writing of the record, so it ends the list")
 
     def step_in_range(value: Any) -> bool:
         return type(value) is int and 1 <= value <= (total or value)
@@ -193,7 +188,7 @@ def check_record(data: dict[str, Any]) -> list[str]:
             errors.append(f"{label}.issue_key: expected a kebab-case key")
         subject, step = item.get("subject"), STEP_REF.fullmatch(str(item.get("subject")))
         if subject not in decisions and not (step and step_in_range(int(step.group(1)))):
-            errors.append(f"{label}.subject: expected the id of a decision of this record, or STEP-NN for a step of the procedure")
+            errors.append(f"{label}.subject: expected the id of a decision of this record, or STEP-NN for a step the record covers")
         choice(item.get("cause"), CAUSES, f"{label}.cause", errors)
         for key in ("problem", "rule", "evidence"):
             text(item.get(key), f"{label}.{key}", errors)

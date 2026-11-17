@@ -48,11 +48,11 @@ Run the commands from the repository root.
 
    Replace every `<...>` placeholder of the file per the [format](references/{{artifact}}-format.md#placeholders-in-the-template).
 4. **Self-verify.** <The check of the file against the request and the format that the agent can perform; what is fixed before reporting>.
-5. **Evaluate and record.** Have the run evaluated ([Evaluating the run]({{creator_rel}}/references/run-evaluation.md#evaluating-the-run)) and its issues improved ([Applying an improvement]({{creator_rel}}/references/run-evaluation.md#applying-an-improvement)), then write exactly one record ([Record]({{creator_rel}}/references/run-evaluation.md#record)):
+5. **Clean up.** <What the run created temporarily and removes>; the notes of the run stay for the next step.
+6. **Evaluate and record.** Have the run evaluated ([Evaluating the run]({{creator_rel}}/references/run-evaluation.md#evaluating-the-run)) and its issues improved ([Applying an improvement]({{creator_rel}}/references/run-evaluation.md#applying-an-improvement)), then write exactly one record ([Record]({{creator_rel}}/references/run-evaluation.md#record)):
 
    ```powershell
    python -B {{creator_path}}/scripts/run_record.py append --input <JSON file>
    ```
 
-6. **Clean up.** <What the run created temporarily and removes>.
 7. **Report.** <The file written, how it was verified and what remains open>, then the evaluation of the run ([Reporting]({{creator_rel}}/references/run-evaluation.md#reporting)).

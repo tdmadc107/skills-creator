@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _common import (DESCRIPTION_LIMIT, HEADING, INSTRUCTION_FILES, NAME_LIMIT, RECORD_TOOL, RESOURCE_FOLDERS, SEMVER, SLUG, SkillError, emit,  # noqa: E402
+from _common import (DESCRIPTION_LIMIT, HEADING, INSTRUCTION_FILES, NAME_LIMIT, recorded_steps, RECORD_TOOL, RESOURCE_FOLDERS, SEMVER, SLUG, SkillError, emit,  # noqa: E402
                      procedure_steps, read_skill, resolve, sections, shown, skill_folders, without_fences)
 from register_skills import register  # noqa: E402
 
@@ -75,6 +75,10 @@ def check_body(body: str) -> list[str]:
         unnamed = [str(number) for number, text in steps if not re.match(r"\*\*[^*]+\*\*", text)]
         if unnamed:
             errors.append(f"each step starts with its name in bold; missing at step {', '.join(unnamed)}")
+        try:
+            recorded_steps(body, "Procedure")
+        except SkillError as exc:
+            errors.append(str(exc))
     left = PLACEHOLDER.findall(CODE_SPAN.sub("", without_fences(body)))
     if left:
         errors.append(f"SKILL.md still holds {len(left)} placeholder(s) outside code, the first one: {left[0]}")

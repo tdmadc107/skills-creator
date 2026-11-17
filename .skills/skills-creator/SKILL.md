@@ -4,7 +4,7 @@ description: "Creates or adjusts an agent skill in the standard skill format. Tu
 metadata:
   id: .skills/skills-creator
   kind: skill
-  version: 1.2.0
+  version: 1.3.0
 ---
 
 # Skill creation
@@ -82,12 +82,12 @@ The commands name this skill's folder as `.skills/skills-creator`; when the fold
 
 8. **Re-read against the three scenarios** of the [writing rules](references/writing-rules.md#re-reading-against-three-scenarios).
    A scenario that fails goes back to step 5; after a change of the `name` or the `description`, steps 6 and 7 run again.
-9. **Evaluate and record.** Have the run evaluated ([Evaluating the run](references/run-evaluation.md#evaluating-the-run)) and its issues improved ([Applying an improvement](references/run-evaluation.md#applying-an-improvement)), then write exactly one record ([Record](references/run-evaluation.md#record)):
+9. **Clean up** the temporary directories and files the run created; the notes of the run stay for the next step.
+10. **Evaluate and record.** Have the run evaluated ([Evaluating the run](references/run-evaluation.md#evaluating-the-run)) and its issues improved ([Applying an improvement](references/run-evaluation.md#applying-an-improvement)), then write exactly one record ([Record](references/run-evaluation.md#record)):
 
-   ```powershell
-   python -B .skills/skills-creator/scripts/run_record.py append --input <JSON file>
-   ```
+    ```powershell
+    python -B .skills/skills-creator/scripts/run_record.py append --input <JSON file>
+    ```
 
-10. **Clean up** the temporary directories and files the run created.
 11. **Report** the skill folder and each file written, the instruction file that registers the skill, the result of the validator, the three scenarios read and what remains open, then the evaluation of the run ([Reporting](references/run-evaluation.md#reporting)).
     Stop there: the new skill runs only when the user asks for the work it carries out.

@@ -1,7 +1,7 @@
 # Run evaluation
 
 The `skills-creator` skill owns how a run of a skill is recorded, how the record is evaluated and how the skill is improved from it.
-Every skill of the [skill format](skill-format.md) applies this file through the first and the last steps of its procedure; the skill's own steps own the work in between.
+Every skill of the [skill format](skill-format.md) applies this file through the first step of its procedure and the step **Evaluate and record**, the one before the report; the skill's own steps own the work in between.
 
 The commands below name the `skills-creator` folder as `.skills/skills-creator`; a skill's own steps give the path that holds in its repository.
 
@@ -9,14 +9,16 @@ The purpose is one loop: a run records the decisions it made and how each step w
 
 ## When a run records
 
-- Every run of a skill writes exactly one record, after its output is settled and before cleanup, whether the run completed, was blocked or failed.
+- Every run of a skill writes exactly one record, in the step **Evaluate and record**: after its output is settled and its cleanup is done, whether the run completed, was blocked or failed.
+- The record covers every step before **Evaluate and record**; the result of that step is the record's `evaluation`, `issues` and `fixes`, and the report that follows changes nothing the evaluation could improve.
 - Asking the user for a decision or for content is not the end of a run: the run pauses, continues with the answers and records once.
 - A request the skill did not take writes no record.
 - A record is never edited: a record that proves wrong is corrected by a new record whose `supersedes` names it.
 
 ## Opening the run
 
-The first step of a procedure runs `start` and keeps the returned `run_ref`: the name and the path of the skill, its `version`, a `digest` of its files, the number of steps of its procedure and the time the run started.
+The first step of a procedure runs `start` and keeps the returned `run_ref`: the name and the path of the skill, its `version`, a `digest` of its files, `recorded_steps` (the number of steps the record covers) and the time the run started.
+`start` refuses a skill whose procedure does not end with the two closing steps.
 This is the version of the rules the run applies, and the record carries it unchanged, even when the run later improves the skill.
 
 ```powershell
@@ -25,9 +27,10 @@ python -B .skills/skills-creator/scripts/run_record.py start --skill <skill fold
 
 ## Notes of the run
 
-From the first step on, the run notes what the record needs, as it happens and not from memory at the end:
+From the first step on, the run notes what the record needs, as it happens and not from memory at the end.
+The notes live in the agent's working context, or in a temporary file outside the skills directory when the run is long; the cleanup step keeps them, because the evaluation reads them.
 
-- **Steps.** For each step of the procedure: its status, as the [Record](#record) section lists them, and in one sentence what was done or why not.
+- **Steps.** For each step the record covers: its status, as the [Record](#record) section lists them, and in one sentence what was done or why not.
 - **Decisions.** Each choice that shaped the output, with the step that made it and its basis: a case chosen among the cases a step names, an assumption, a departure from a step, a question asked and the user's answer, a scope left out.
   The basis is what the decision rests on: a rule as `file#section`, a file or symbol that was read, a command and its result, or the user's words quoted.
   A decision without a basis is recorded as such; the evaluation treats it as a suspicion.
@@ -101,7 +104,8 @@ A run whose record is rejected is not complete.
 python -B .skills/skills-creator/scripts/run_record.py append --input <JSON file>
 ```
 
-The input file is temporary: write it outside the skills directory, and remove it in the cleanup step.
+The input file is temporary: write it outside the skills directory.
+Once `append` passes, the step removes that file, the notes file when there is one, and every temporary file the evaluation created; the cleanup step ran before them.
 
 Records are stored at `<skills directory>/.records/<skill>/<YYYY-MM-DD>.jsonl`, one record per line.
 They describe the user's projects, so the tool creates `.records/.gitignore` with the single line `*` when that file does not exist: the records stay on the local machine until the user changes that file, which the tool never touches again.
@@ -111,7 +115,7 @@ They describe the user's projects, so the tool creates `.records/.gitignore` wit
 | `run_ref` | The object `start` returned, copied as is |
 | `request` | What the user asked, in short, in the user's words where possible |
 | `outcome` | `status` (`completed`, `blocked` or `failed`) and `summary`: what the run produced, the wrong decisions below the threshold and, in `mode: self`, why no agent evaluated |
-| `steps` | One entry per step of the procedure, in order: `step` (its number), `status` and `note`. The status is `done`, `skipped`, `blocked` or `failed`; `not_reached` for a step that a blocked or failed run never got to; `pending` for the steps that follow the writing of the record, such as the cleanup and the report |
+| `steps` | One entry per step before **Evaluate and record**, in order and numbered 1 to `run_ref.recorded_steps`: `step` (its number), `status` and `note`. The status is `done`, `skipped`, `blocked` or `failed`, or `not_reached` for a step that a blocked or failed run never got to |
 | `decisions` | Each decision: `id` (`DEC-NN`), `step`, `decision` and `basis`; an empty array when the run decided nothing |
 | `evaluation` | `mode` (`agent` or `self`) and `result` (`clean`, or `issues` when the record has issues) |
 | `issues` | Each issue: `id` (`ISSUE-NN`), `issue_key`, `subject` (`DEC-NN` or `STEP-NN`), `cause`, `problem`, `rule`, `evidence`, and `prior_fix` (`<record_id>#FIX-NN`) only for `ineffective_fix` |
@@ -123,12 +127,12 @@ A complete record, as the input of `append`; values in `<...>` are placeholders:
 
 ```json
 {
-  "run_ref": {"skill": "<name>", "path": "<skill folder>", "version": "1.0.0", "digest": "<digest>", "steps": 3, "started_at": "<timestamp>"},
+  "run_ref": {"skill": "<name>", "path": "<skill folder>", "version": "1.0.0", "digest": "<digest>", "recorded_steps": 3, "started_at": "<timestamp>"},
   "request": "<what the user asked>",
   "outcome": {"status": "completed", "summary": "<summary>"},
   "steps": [{"step": 1, "status": "done", "note": "<what was done>"},
             {"step": 2, "status": "skipped", "note": "<the condition of the skill that allowed skipping it>"},
-            {"step": 3, "status": "pending", "note": "<what the step will do once the record is written>"}],
+            {"step": 3, "status": "done", "note": "<what the cleanup removed>"}],
   "decisions": [{"id": "DEC-01", "step": 1, "decision": "<what was decided>", "basis": "<file#section, source read, command result or the user's words>"}],
   "evaluation": {"mode": "agent", "result": "issues"},
   "issues": [{"id": "ISSUE-01", "issue_key": "<kebab-case-key>", "subject": "DEC-01", "cause": "instruction",
