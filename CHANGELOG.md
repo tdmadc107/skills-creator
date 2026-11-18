@@ -3,7 +3,7 @@
 Every notable change to skills-generator is recorded here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.0.1] - 2026-11-18
 
 ### Fixed
 
@@ -73,5 +73,6 @@ The first release.
 - Continuous integration (`.github/workflows/ci.yml`) on Python 3.9 and 3.13 and on Node 18, 22 and 24, and a publish workflow (`.github/workflows/publish.yml`) that releases to npm on a `v<version>` tag of `main`, once the tests pass and the tag, `package.json`, `SKILL.md` and this changelog agree on the version.
 - Rulesets to import into GitHub (`.github/rulesets/`) that protect `main`, keep the release tags and the creation of branches to the owner, and require every CI job, with a `CODEOWNERS` file.
 
+[2.0.1]: https://github.com/tdmadc107/skills-creator/releases/tag/v2.0.1
 [2.0.0]: https://github.com/tdmadc107/skills-creator/releases/tag/v2.0.0
 [1.0.0]: https://github.com/tdmadc107/skills-creator/releases/tag/v1.0.0
