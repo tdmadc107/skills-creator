@@ -14,7 +14,7 @@ To be released as 2.0.0: the skill moves from `.skills/` to the skills folders o
   - `.claude/skills/` for Claude Code (`.claude/` or `CLAUDE.md`);
   - `.cursor/skills/` for Cursor (`.cursor/`);
   - `.gemini/skills/` for Gemini CLI (`.gemini/` or `GEMINI.md`);
-  - `.github/skills/` for GitHub Copilot (`.github/copilot-instructions.md` or `.github/instructions/`).
+  - `.github/skills/` for GitHub Copilot (`.github/skills/`, `.github/copilot-instructions.md` or `.github/instructions/`, but not `.github/` alone).
 
   An existing skills folder is used as it is, a missing one is created, and a project that uses no provider gets `.agents/skills/`.
 - With several providers, every skills folder holds a full copy of every skill, identical but for the paths of its own folder.

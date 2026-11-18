@@ -47,10 +47,11 @@ The installer looks for the agent providers your project uses and copies the ski
 | `.claude/` or `CLAUDE.md` (Claude Code) | `.claude/skills/skills-generator/` |
 | `.cursor/` (Cursor) | `.cursor/skills/skills-generator/` |
 | `.gemini/` or `GEMINI.md` (Gemini CLI) | `.gemini/skills/skills-generator/` |
-| `.github/copilot-instructions.md` or `.github/instructions/` (GitHub Copilot) | `.github/skills/skills-generator/` |
+| `.github/skills/`, `.github/copilot-instructions.md` or `.github/instructions/` (GitHub Copilot) | `.github/skills/skills-generator/` |
 | None of them | `.agents/skills/skills-generator/`, created |
 
-- 📁 An existing `skills` folder is used as it is; a missing one is created, named `skills`.
+- 📁 An existing skills folder counts as its provider being in use and is used as it is; a missing one is created, named `skills`.
+- 🐙 A `.github/` folder that holds only workflows does not count as GitHub Copilot.
 - 🧩 With several providers, each one gets a full copy, and every skill you create or improve later is kept identical in every copy.
 - ➕ Add a provider later and run the installer again: the new provider gets `skills-generator` and a copy of every skill you created.
 - 🤝 Skills you wrote yourself for one provider stay where they are, and are listed in the instruction file too.

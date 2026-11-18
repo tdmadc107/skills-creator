@@ -6,7 +6,7 @@ How the content of a skill is worded belongs to the [writing rules](writing-rule
 ## Location and naming
 
 - Skills folders: the skills folder of every agent provider the repository uses, at its root, so that each provider finds the skills where it looks for them.
-  A provider is in use when one of the paths below, or its skills folder, exists; a skills folder that is missing is created, named `skills`.
+  A provider is in use when its skills folder, or one of the other paths below, exists; a skills folder that is missing is created, named `skills`.
   When the repository uses no provider, the skills folder is `.agents/skills/`.
 
   | Provider | In use when the root has | Skills folder |
@@ -15,7 +15,7 @@ How the content of a skill is worded belongs to the [writing rules](writing-rule
   | Claude Code | `.claude/` or `CLAUDE.md` | `.claude/skills/` |
   | Cursor | `.cursor/` | `.cursor/skills/` |
   | Gemini CLI | `.gemini/` or `GEMINI.md` | `.gemini/skills/` |
-  | GitHub Copilot | `.github/copilot-instructions.md` or `.github/instructions/` | `.github/skills/` |
+  | GitHub Copilot | `.github/skills/`, `.github/copilot-instructions.md` or `.github/instructions/`, but not `.github/` alone, which most repositories have for workflows | `.github/skills/` |
 
   The user may name other folders instead; the helper scripts take them with `--skills-dir`.
 - Copies: every skills folder holds every skill of this format, and the copies of a skill are identical but for the paths that name their own folder, such as `metadata.id` and the commands.

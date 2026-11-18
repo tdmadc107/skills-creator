@@ -139,6 +139,24 @@ class PackageTests(unittest.TestCase):
         self.assertEqual(table, [(p["id"], p["label"], p["skills"], p["detect"]) for p in PROVIDERS])
         self.assertIn(f'const DEFAULT_SKILLS_DIR = "{DEFAULT_SKILLS_DIR}";', installer)
 
+    def test_the_format_reference_names_every_path_that_puts_a_provider_in_use(self):
+        # The table is what a reader checks; it must say what the code detects, the skills folder included.
+        sys.path.insert(0, str(SCRIPTS))
+        try:
+            from _common import PROVIDERS
+        finally:
+            sys.path.remove(str(SCRIPTS))
+        text = (SKILL / "references/skill-format.md").read_text(encoding="utf-8")
+        for provider in PROVIDERS:
+            row = next(line for line in text.splitlines() if line.strip().startswith("|") and line.strip().endswith(f"| `{provider['skills']}/` |"))
+            detection = row.split("|")[2]
+            # The skills folder is named in the detection column unless its parent folder is already one of the paths there.
+            parent = provider["skills"].rsplit("/", 1)[0]
+            paths = list(provider["detect"]) + ([] if parent in provider["detect"] else [provider["skills"]])
+            for path in paths:
+                with self.subTest(provider=provider["id"], path=path):
+                    self.assertTrue(f"`{path}`" in detection or f"`{path}/`" in detection, detection)
+
     def test_scripts_postpone_annotations(self):
         # Postponed annotations keep `X | None` hints valid on Python 3.9, the oldest version the scripts support.
         for script in sorted(SCRIPTS.glob("*.py")) + [SKILL / "assets" / "script-template.py"]:
