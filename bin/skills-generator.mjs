@@ -48,7 +48,7 @@ Options:
 class UsageError extends Error {}
 
 function parseArgs(argv) {
-  const opts = { root: process.cwd(), create: null, force: false };
+  const opts = { root: process.cwd(), rootGiven: false, create: null, force: false };
   const valueOf = (index, flag) => {
     if (index >= argv.length || argv[index].startsWith("--")) throw new UsageError(`${flag} needs a value`);
     return argv[index];
@@ -58,7 +58,10 @@ function parseArgs(argv) {
     if (arg === "--help" || arg === "-h") opts.command = "help";
     else if (arg === "--version" || arg === "-v") opts.command = "version";
     else if (arg === "--force") opts.force = true;
-    else if (arg === "--root") opts.root = valueOf(++i, arg);
+    else if (arg === "--root") {
+      opts.root = valueOf(++i, arg);
+      opts.rootGiven = true;
+    }
     else if (arg === "--create") opts.create = valueOf(++i, arg);
     else if (arg.startsWith("--")) throw new UsageError(`unknown option ${arg}`);
     else throw new UsageError(`unexpected argument ${arg}; the package takes options only`);
@@ -68,7 +71,10 @@ function parseArgs(argv) {
   return opts;
 }
 
-const sha = (data) => crypto.createHash("sha256").update(data).digest("hex");
+// Git on Windows checks text out with CRLF, which is no change of content.
+const lf = (data) => data.toString("utf8").replace(/\r\n/g, "\n");
+const sha = (data) => crypto.createHash("sha256").update(lf(data)).digest("hex");
+const same = (a, b) => lf(a) === lf(b);
 
 /** `added`: files about to be created, which count as present. */
 function providersInUse(root, added = []) {
@@ -207,7 +213,7 @@ function planFolder(opts, skillsDir) {
   const installed = filesOf(folder);
   // A file is changed in the project when it differs from what the last install wrote, or was added there.
   const changed = installed.filter((rel) => manifest.files[rel] !== sha(fs.readFileSync(path.join(folder, rel))));
-  const blocking = changed.filter((rel) => !(rel in files) || files[rel].compare(fs.readFileSync(path.join(folder, rel))) !== 0);
+  const blocking = changed.filter((rel) => !(rel in files) || !same(files[rel], fs.readFileSync(path.join(folder, rel))));
   return { skillsDir, folder, files, manifest, installed, changed, blocking };
 }
 
@@ -216,7 +222,7 @@ function applyFolder(opts, plan) {
   let removed = 0;
   for (const [rel, data] of Object.entries(plan.files)) {
     const target = path.join(plan.folder, rel);
-    if (fs.existsSync(target) && data.compare(fs.readFileSync(target)) === 0) continue;
+    if (fs.existsSync(target) && same(data, fs.readFileSync(target))) continue;
     writeFile(target, data);
     written++;
   }
@@ -231,8 +237,20 @@ function applyFolder(opts, plan) {
   else console.log(`Installed ${SKILL} ${PACKAGE.version} in ${where}`);
 }
 
+/** Agents load a project's skills from its root, so a run from a subfolder of a Git repository installs nothing. */
+function checkRoot(opts) {
+  if (opts.rootGiven) return;
+  const result = spawnSync("git", ["rev-parse", "--show-toplevel"], { cwd: opts.root, encoding: "utf8" });
+  if (result.status !== 0) return;
+  const top = path.resolve(result.stdout.trim());
+  if (fs.realpathSync(top) !== fs.realpathSync(opts.root)) {
+    throw new Error(`${opts.root} is not the root folder of the project; run the command in ${top}, or pass --root <dir>`);
+  }
+}
+
 /** When one copy is blocked, nothing changes anywhere. */
 function installOrUpdate(opts) {
+  checkRoot(opts);
   // Decided before installing: the new skills folders would make their providers look in use, and a CLAUDE.md
   // about to be created puts Claude Code in use.
   opts.create = fileToCreate(opts);

@@ -4,7 +4,7 @@ description: "Creates or adjusts an agent skill in the standard skill format. Tu
 metadata:
   id: .agents/skills/skills-generator
   kind: skill
-  version: 2.0.0
+  version: 2.0.1
 ---
 
 # Skill creation
@@ -40,7 +40,7 @@ A skill it creates carries the rules of its own work, links to a document of the
 
 ## Procedure
 
-Run the commands from the root of the repository that receives the skill.
+Run the commands from the root of the repository that receives the skill; use `python3` where `python` is not on the PATH.
 The commands name this skill's folder as `.agents/skills/skills-generator`; in a copy in another skills folder, they name that copy.
 The scripts find the skills folders of the repository themselves ([Location and naming](references/skill-format.md#location-and-naming)).
 

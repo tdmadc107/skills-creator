@@ -271,6 +271,11 @@ class NewSkillTests(Repository):
         reference.write_text(reference.read_text(encoding="utf-8") + "\nA new rule.\n", encoding="utf-8")
         errors = self.errors("--path", ".agents/skills/incident-report")
         self.assertTrue(any("the copy in .claude/skills/ differs" in error and "references/post-mortem-format.md" in error for error in errors), errors)
+        reference.write_text(reference.read_text(encoding="utf-8").replace("\nA new rule.\n", ""), encoding="utf-8")
+        # A Windows checkout gives one copy CRLF line endings, which is no difference.
+        entry = claude / "SKILL.md"
+        entry.write_bytes(entry.read_bytes().replace(b"\n", b"\r\n"))
+        self.assertEqual(self.errors("--path", ".agents/skills/incident-report", "--skip-registration"), [])
         shutil.rmtree(claude)
         errors = self.errors("--path", ".agents/skills/incident-report", "--skip-registration")
         self.assertTrue(any(".claude/skills/incident-report is missing" in error for error in errors), errors)
@@ -460,6 +465,11 @@ class RecordTests(Repository):
         code, result = run("run_record.py", self.root, "start", "--skill", ".agents/skills/work")
         self.assertEqual(code, 1)
         self.assertIn("must end with the steps", result["errors"][0])
+
+    def test_the_digest_ignores_the_installer_manifest(self):
+        (self.root / ".agents/skills/work/.install.json").write_text('{"version": "9.9.9"}', encoding="utf-8")
+        code, opened = run("run_record.py", self.root, "start", "--skill", ".agents/skills/work")
+        self.assertEqual((code, opened["run_ref"]["digest"]), (0, self.ref["digest"]))
 
     def test_a_record_is_stored_as_one_line_and_kept_out_of_git(self):
         code, first = self.append(self.record())

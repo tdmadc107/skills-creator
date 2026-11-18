@@ -166,6 +166,7 @@ def copy_files(skill: Path) -> dict[str, bytes]:
 def normalized(data: bytes, skills_dir: str, names: tuple[str, ...]) -> bytes:
     """A file of a copy with the paths into its own skills folder replaced, so copies in different folders compare equal."""
 
+    data = data.replace(b"\r\n", b"\n")
     for name in names:
         data = data.replace(f"{skills_dir}/{name}".encode("utf-8"), f"<skills>/{name}".encode("utf-8"))
     return data

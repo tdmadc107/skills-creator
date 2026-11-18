@@ -3,6 +3,16 @@
 Every notable change to skills-generator is recorded here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1] - 2026-11-18
+
+### Fixed
+
+- The digest that `run_record.py start` returns leaves out the installer's `.install.json`, so it changes only when the rules of the skill change, and copies of a skill in different skills folders no longer differ by their manifest.
+- The README's steps to install without Node say to replace the packaged path in every file of each copy; a copy made without that step named `.agents/skills/skills-generator` in its commands and failed the validator.
+- The installer and the validator compare files with CRLF line endings read as LF, so a Windows checkout of committed copies no longer blocks every update or reports copies as different.
+- The installer stops when it runs in a subfolder of a Git repository, where agents would not find the skill, and names the root folder; `--root` still installs anywhere on purpose.
+- The procedure, the templates and the skill format say to run the scripts with `python3` where `python` is not on the PATH, as on macOS and many Linux systems.
+
 ## [2.0.0] - 2026-11-18
 
 The skill moves from `.skills/` to the skills folders of the agent providers, so the installer and the scripts work differently.
@@ -66,5 +76,6 @@ The first release.
 - Continuous integration (`.github/workflows/ci.yml`) on Python 3.9 and 3.13 and on Node 18, 22 and 24, and a publish workflow (`.github/workflows/publish.yml`) that releases to npm on a `v<version>` tag of `main`, once the tests pass and the tag, `package.json`, `SKILL.md` and this changelog agree on the version.
 - Rulesets to import into GitHub (`.github/rulesets/`) that protect `main`, keep the release tags and the creation of branches to the owner, and require every CI job, with a `CODEOWNERS` file.
 
+[2.0.1]: https://github.com/tdmadc107/skills-creator/releases/tag/v2.0.1
 [2.0.0]: https://github.com/tdmadc107/skills-creator/releases/tag/v2.0.0
 [1.0.0]: https://github.com/tdmadc107/skills-creator/releases/tag/v1.0.0

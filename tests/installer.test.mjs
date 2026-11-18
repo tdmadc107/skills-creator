@@ -11,6 +11,7 @@ const CLI = path.join(REPO, "bin", "skills-generator.mjs");
 const PACKAGE = JSON.parse(fs.readFileSync(path.join(REPO, "package.json"), "utf8"));
 const SKILL_MD = path.join(REPO, ".agents", "skills", "skills-generator", "SKILL.md");
 const PYTHON = ["python3", "python"].find((cmd) => spawnSync(cmd, ["--version"]).status === 0);
+const GIT = spawnSync("git", ["--version"]).status === 0;
 
 function tempRepo(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "skills-generator-"));
@@ -125,6 +126,34 @@ test("a provider added later gets every skill of the format, and a skill of anot
   assert.match(fs.readFileSync(path.join(root, "CLAUDE.md"), "utf8"), /\| \[`my-review`\]\(\.claude\/skills\/my-review\/SKILL\.md\) \| Reviews a pull request\. Use when asked\. \|/);
   assert.equal(validate(root, ".claude/skills/skills-generator", ".claude/skills/release-notes").passed, true);
   assert.doesNotMatch(cli(root).out, /Copied/);
+});
+
+test("a Windows checkout with CRLF line endings does not count as a change", { skip: !PYTHON && "Python is required" }, (t) => {
+  const root = tempRepo(t);
+  assert.equal(cli(root).code, 0);
+  const folder = path.join(root, ".agents/skills/skills-generator");
+  for (const rel of ["SKILL.md", "references/skill-format.md", "scripts/_common.py"]) {
+    const file = path.join(folder, rel);
+    fs.writeFileSync(file, fs.readFileSync(file, "utf8").replace(/\n/g, "\r\n"));
+  }
+  const again = cli(root);
+  assert.equal(again.code, 0, again.err);
+  assert.match(again.out, /0 file\(s\) written, 0 removed/);
+  assert.equal(validate(root, ".agents/skills/skills-generator").passed, true);
+});
+
+test("a run from a subfolder of a Git repository stops and names the root, unless --root is given", { skip: !GIT && "Git is required" }, (t) => {
+  const root = tempRepo(t);
+  assert.equal(spawnSync("git", ["init", "-q"], { cwd: root }).status, 0);
+  const sub = path.join(root, "src", "app");
+  fs.mkdirSync(sub, { recursive: true });
+  const result = spawnSync(process.execPath, [CLI], { cwd: sub, encoding: "utf8" });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /is not the root folder of the project; run the command in /);
+  assert.deepEqual(fs.readdirSync(sub), []);
+  assert.ok(!fs.existsSync(path.join(root, ".agents")));
+  const named = spawnSync(process.execPath, [CLI, "--root", sub], { cwd: sub, encoding: "utf8" });
+  assert.equal(named.status, 0, named.stderr);
 });
 
 test("--create CLAUDE.md in a project with no provider installs for Claude Code", { skip: !PYTHON && "Python is required" }, (t) => {
