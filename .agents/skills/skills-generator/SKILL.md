@@ -1,10 +1,10 @@
 ---
 name: skills-generator
-description: "Creates or adjusts an agent skill in the standard skill format. Turns a request for a skill into a skill folder whose SKILL.md holds the frontmatter, when the skill applies and a numbered procedure, with a template, a format reference and a helper script when each run of the skill produces a file of a fixed form, then registers every skill in the repository's AGENTS.md or CLAUDE.md, creating that file when the repository has neither, and validates the structure. Every skill it creates records the decisions and the steps of each run, has the record evaluated and is improved from the issues found. Use only when the user's own words ask to create, scaffold, restructure or adjust a skill, or to improve a skill from its run records. Do not use to run an existing skill, to answer a question about skills that only needs an explanation, or to write agent instructions that are not a skill."
+description: "Creates or adjusts an agent skill in the standard skill format. Turns a request for a skill into a skill folder, copied into the skills folder of every agent provider the repository uses, whose SKILL.md holds the frontmatter, when the skill applies and a numbered procedure, with a template, a format reference and a helper script when each run of the skill produces a file of a fixed form, then registers every skill in the repository's AGENTS.md or CLAUDE.md, creating that file when the repository has neither, and validates the structure. Every skill it creates records the decisions and the steps of each run, has the record evaluated and is improved from the issues found. Use only when the user's own words ask to create, scaffold, restructure or adjust a skill, or to improve a skill from its run records. Do not use to run an existing skill, to answer a question about skills that only needs an explanation, or to write agent instructions that are not a skill."
 metadata:
-  id: .skills/skills-generator
+  id: .agents/skills/skills-generator
   kind: skill
-  version: 1.0.0
+  version: 2.0.0
 ---
 
 # Skill creation
@@ -41,14 +41,15 @@ A skill it creates carries the rules of its own work, links to a document of the
 ## Procedure
 
 Run the commands from the root of the repository that receives the skill.
-The commands name this skill's folder as `.skills/skills-generator`; when the folder lives elsewhere in that repository, use its path instead.
+The commands name this skill's folder as `.agents/skills/skills-generator`; in a copy in another skills folder, they name that copy.
+The scripts find the skills folders of the repository themselves ([Location and naming](references/skill-format.md#location-and-naming)).
 
 1. **Open the run.** Read the [skill format](references/skill-format.md) and the [writing rules](references/writing-rules.md) in full.
-   Read the repository's instruction file, when it has one, and the `SKILL.md` of every skill already in the skills directory ([Location and naming](references/skill-format.md#location-and-naming)), together in one step.
+   Read the repository's instruction file, when it has one, and the `SKILL.md` of every skill already in one of the skills folders ([Location and naming](references/skill-format.md#location-and-naming)), together in one step.
    Run the command below and keep the returned `run_ref` ([Opening the run](references/run-evaluation.md#opening-the-run)); from this step on, note each step and each decision with its basis ([Notes of the run](references/run-evaluation.md#notes-of-the-run)).
 
    ```powershell
-   python -B .skills/skills-generator/scripts/run_record.py start --skill .skills/skills-generator
+   python -B .agents/skills/skills-generator/scripts/run_record.py start --skill .agents/skills/skills-generator
    ```
 
 2. **Analyze the request.** Settle what one run of the skill carries out, the requests that open it and the nearby requests it must not take, what a run produces, which document owns each decision of the work ([One owner per rule](references/writing-rules.md#one-owner-per-rule)), and the steps of a run.
@@ -57,27 +58,29 @@ The commands name this skill's folder as `.skills/skills-generator`; when the fo
    When the user asks to improve a skill from its run records, read them first and group their issues per [Reading earlier records](references/run-evaluation.md#reading-earlier-records).
 3. **Choose the size and the name** ([The two sizes](references/skill-format.md#the-two-sizes), [Location and naming](references/skill-format.md#location-and-naming)); for a full skill, also the name of the artifact.
 4. **Scaffold the skill.**
-   When the user asks to adjust or improve an existing skill, skip this step: steps 5 to 8 apply to the files that change.
+   The script creates the skill in every skills folder at once.
+   When the user asks to adjust or improve an existing skill, skip this step: steps 5 to 8 apply to the files that change, in every copy.
 
    ```powershell
-   python -B .skills/skills-generator/scripts/new_skill.py --name <name> --size <thin|full> [--artifact <artifact>] [--skills-dir <dir>]
+   python -B .agents/skills/skills-generator/scripts/new_skill.py --name <name> --size <thin|full> [--artifact <artifact>]
    ```
 
 5. **Write the content.** Replace every `<...>` placeholder of `SKILL.md` per the [Body](references/skill-format.md#body) and [Frontmatter](references/skill-format.md#frontmatter) sections and the [writing rules](references/writing-rules.md); a line of the form `<If ...: ...>` stays only when its condition holds.
    Keep the steps that open the run and that evaluate and record it as the template gives them, and renumber them when steps are added between them.
    For a full skill, write the [format reference](references/skill-format.md#format-reference) first, then the [output template](references/skill-format.md#output-template), then adapt the [helper script](references/skill-format.md#helper-script) to what a tool can compute, or remove it when there is nothing to compute.
    Run each script once against a temporary directory and read its output.
-   An adjusted skill gets its `version` bumped per [Frontmatter](references/skill-format.md#frontmatter).
-6. **Register the skills** in the instruction file that [Registration](references/skill-format.md#registration) picks; pass `--create CLAUDE.md` only when the repository has neither file and the user asks for that one:
+   Write the content in one copy, then give every other copy the same content with the paths of its own skills folder ([Location and naming](references/skill-format.md#location-and-naming)).
+   An adjusted skill gets its `version` bumped per [Frontmatter](references/skill-format.md#frontmatter), in every copy.
+6. **Register the skills** in the instruction file that [Registration](references/skill-format.md#registration) picks; pass `--create <file>` only when the repository has neither file and the user names the one to create:
 
    ```powershell
-   python -B .skills/skills-generator/scripts/register_skills.py [--skills-dir <dir>] [--create <AGENTS.md|CLAUDE.md>]
+   python -B .agents/skills/skills-generator/scripts/register_skills.py [--create <AGENTS.md|CLAUDE.md>]
    ```
 
 7. **Validate**, then fix and rerun until the validator passes:
 
    ```powershell
-   python -B .skills/skills-generator/scripts/validate_skill.py --path <skill folder>
+   python -B .agents/skills/skills-generator/scripts/validate_skill.py --path <skill folder>
    ```
 
 8. **Re-read against the three scenarios** of the [writing rules](references/writing-rules.md#re-reading-against-three-scenarios).
@@ -86,7 +89,7 @@ The commands name this skill's folder as `.skills/skills-generator`; when the fo
 10. **Evaluate and record.** Have the run evaluated ([Evaluating the run](references/run-evaluation.md#evaluating-the-run)) and its issues improved ([Applying an improvement](references/run-evaluation.md#applying-an-improvement)), then write exactly one record ([Record](references/run-evaluation.md#record)):
 
     ```powershell
-    python -B .skills/skills-generator/scripts/run_record.py append --input <JSON file>
+    python -B .agents/skills/skills-generator/scripts/run_record.py append --input <JSON file>
     ```
 
 11. **Report** the skill folder and each file written, the instruction file that registers the skill, the result of the validator, the three scenarios read and what remains open, then the evaluation of the run ([Reporting](references/run-evaluation.md#reporting)).

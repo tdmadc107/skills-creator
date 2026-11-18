@@ -15,8 +15,15 @@ SLUG = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
 SEMVER = re.compile(r"\d+\.\d+\.\d+")
 NAME_LIMIT = 64
 DESCRIPTION_LIMIT = 1024
-SKILLS_DIR = ".skills"
-# The instruction files a skill is registered in, in the order they are looked for.
+# Same table as PROVIDERS in bin/skills-generator.mjs; a test keeps the two equal.
+PROVIDERS = (
+    {"id": "agents", "label": "Codex CLI, Antigravity and other agents that read .agents/", "skills": ".agents/skills", "detect": (".agents", ".codex", ".agent")},
+    {"id": "claude", "label": "Claude Code", "skills": ".claude/skills", "detect": (".claude", "CLAUDE.md")},
+    {"id": "cursor", "label": "Cursor", "skills": ".cursor/skills", "detect": (".cursor",)},
+    {"id": "gemini", "label": "Gemini CLI", "skills": ".gemini/skills", "detect": (".gemini", "GEMINI.md")},
+    {"id": "copilot", "label": "GitHub Copilot", "skills": ".github/skills", "detect": (".github/copilot-instructions.md", ".github/instructions")},
+)
+DEFAULT_SKILLS_DIR = ".agents/skills"
 INSTRUCTION_FILES = ("AGENTS.md", "CLAUDE.md")
 RESOURCE_FOLDERS = ("assets", "references", "scripts")
 BLOCK_START = "<!-- skills:start -->"
@@ -25,10 +32,8 @@ BLOCK = re.compile(re.escape(BLOCK_START) + r".*?" + re.escape(BLOCK_END), re.S)
 FENCE = re.compile(r"(?ms)^[ \t]*(`{3,}|~{3,})[^\n]*\n.*?^[ \t]*\1[ \t]*$")
 HEADING = re.compile(r"(?m)^(#{1,6}) (.+?)\s*$")
 STEP = re.compile(r"(?m)^(\d+)\. (.*)$")
-# The tool that opens and records every run of a skill, and the folder of the skills directory that keeps the records.
 RECORD_TOOL = "run_record.py"
 RECORDS = ".records"
-# The two steps that end every procedure, in this order; a record covers every step before them.
 CLOSING_STEPS = ("Evaluate and record", "Report")
 STEP_NAME = re.compile(r"\*\*([^*]+?)\.?\*\*")
 
@@ -38,8 +43,6 @@ class SkillError(Exception):
 
 
 def emit(result: dict[str, Any]) -> int:
-    """Print the result as JSON and return the exit code that matches it."""
-
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     print(json.dumps(result, ensure_ascii=False, indent=2))
@@ -47,8 +50,6 @@ def emit(result: dict[str, Any]) -> int:
 
 
 def shown(path: Path, root: Path) -> str:
-    """A path as the output names it: relative to the repository root when inside it, otherwise absolute."""
-
     return path.relative_to(root).as_posix() if path.is_relative_to(root) else path.as_posix()
 
 
@@ -80,8 +81,11 @@ def parse_scalar(raw: str, where: str) -> Any:
     return value
 
 
+BLOCK_SCALAR = re.compile(r"[|>][+-]?")
+
+
 def parse_frontmatter(text: str, where: str) -> tuple[dict[str, Any], str]:
-    """Read the YAML subset a skill uses: `key: value` lines and one level of nested keys.
+    """Read the YAML subset a skill uses: `key: value` lines, one level of nested keys, and `>` or `|` block values.
 
     Returns the fields and the body below the frontmatter.
     """
@@ -95,7 +99,10 @@ def parse_frontmatter(text: str, where: str) -> tuple[dict[str, Any], str]:
         raise SkillError(f"{where}: the frontmatter block is not closed by ---") from None
     meta: dict[str, Any] = {}
     parent: dict[str, Any] | None = None
-    for number, line in enumerate(lines[1:end], 2):
+    number = 1
+    while number < end:
+        line = lines[number]
+        number += 1
         if not line.strip() or line.lstrip().startswith("#"):
             continue
         indented = line.startswith((" ", "\t"))
@@ -103,6 +110,17 @@ def parse_frontmatter(text: str, where: str) -> tuple[dict[str, Any], str]:
         spot = f"{where}:{number}"
         if not separator or not key or (raw and not raw.startswith(" ")):
             raise SkillError(f"{spot}: expected `key: value`")
+        if BLOCK_SCALAR.fullmatch(raw.strip()):
+            own = len(line) - len(line.lstrip())
+            block = []
+            while number < end and (not lines[number].strip() or len(lines[number]) - len(lines[number].lstrip()) > own):
+                block.append(lines[number].strip())
+                number += 1
+            value = (" ".join(part for part in block if part) if raw.strip().startswith(">") else "\n".join(block).strip("\n"))
+            (parent if indented and parent is not None else meta)[key] = value
+            if not indented:
+                parent = None
+            continue
         if indented:
             if parent is None:
                 raise SkillError(f"{spot}: an indented key needs a parent key above it")
@@ -158,55 +176,99 @@ def recorded_steps(body: str, where: str) -> int:
     return len(names) - len(CLOSING_STEPS)
 
 
-def skill_folders(skills_dir: Path) -> list[Path]:
-    """Every folder of the skills directory that holds a SKILL.md, by name."""
+def posix_dir(value: str) -> str:
+    """A skills folder as the scripts name it: forward slashes, no leading `./` and no trailing slash."""
 
+    text = value.replace("\\", "/").strip()
+    while text.startswith("./"):
+        text = text[2:]
+    return text.rstrip("/")
+
+
+def skills_dirs(root: Path, named: list[str] | None = None) -> list[str]:
+    """The skills folders of the repository, relative to its root: the ones named, or every provider's in use.
+
+    When the repository uses no provider, the result is the default folder, which may not exist yet.
+    """
+
+    if named:
+        found = [posix_dir(name) for name in named]
+    else:
+        found = [provider["skills"] for provider in PROVIDERS
+                 if any((root / path).exists() for path in (*provider["detect"], provider["skills"]))]
+    unique = list(dict.fromkeys(found))
+    return unique or [DEFAULT_SKILLS_DIR]
+
+
+def skill_folders(skills_dir: Path) -> list[Path]:
     if not skills_dir.is_dir():
         return []
     return sorted(folder for folder in skills_dir.iterdir() if (folder / "SKILL.md").is_file())
 
 
-def registration_block(root: Path, skills_dir: Path) -> str:
-    """The block an instruction file carries: one row per skill of the skills directory."""
+def registration_block(root: Path, dirs: list[Path], skipped: list[str] | None = None) -> str:
+    """The block an instruction file carries: one row per skill, linked to its copy in the first folder that holds it.
 
-    rows = []
-    for folder in skill_folders(skills_dir):
-        meta, _ = read_skill(folder)
-        name, description = meta.get("name"), meta.get("description")
-        if not isinstance(name, str) or not isinstance(description, str) or not name or not description:
-            raise SkillError(f"{folder.name}/SKILL.md: name and description are required to register the skill")
-        cell = " ".join(description.split()).replace("|", "\\|")
-        rows.append(f"| [`{name}`]({shown(folder / 'SKILL.md', root)}) | {cell} |")
+    A skill whose frontmatter cannot be read, or has no name or description, is left out and named in `skipped`, so
+    one skill the user wrote in another form does not keep the others from being listed.
+    """
+
+    dirs = [skills_dir for skills_dir in dirs if skills_dir.is_dir()]
+    rows: dict[str, str] = {}
+    for skills_dir in dirs:
+        for folder in skill_folders(skills_dir):
+            try:
+                meta, _ = read_skill(folder)
+            except SkillError as exc:
+                if skipped is not None:
+                    skipped.append(f"{shown(folder, root)}: {exc}")
+                continue
+            name, description = meta.get("name"), meta.get("description")
+            if not isinstance(name, str) or not isinstance(description, str) or not name or not description:
+                if skipped is not None:
+                    skipped.append(f"{shown(folder, root)}: SKILL.md has no name or no description")
+                continue
+            if name not in rows:
+                cell = " ".join(description.split()).replace("|", "\\|")
+                rows[name] = f"| [`{name}`]({shown(folder / 'SKILL.md', root)}) | {cell} |"
+    names = ", ".join(f"`{shown(skills_dir, root)}/`" for skills_dir in dirs)
     if not rows:
-        raise SkillError(f"{shown(skills_dir, root)} holds no skill to register")
-    folder_name = shown(skills_dir, root)
+        raise SkillError("the skills folders hold no skill to register")
     return "\n".join([
         BLOCK_START,
         "## Skills",
         "",
-        f"This block is generated from the `SKILL.md` files in `{folder_name}/`: change those files, then register the skills again; do not edit it by hand.",
+        f"This block is generated from the `SKILL.md` files in {names}: change those files, then register the skills again; do not edit it by hand.",
+        "Every skills folder holds the same skills; each row links to one copy.",
         "",
         "When a request matches the description of a skill below, read that skill's `SKILL.md` in full and follow it; relative paths in that file resolve from its own folder.",
         "When no skill matches, work without one.",
         "",
         "| Skill | Description |",
         "| --- | --- |",
-        *rows,
+        *[rows[name] for name in sorted(rows)],
         BLOCK_END,
     ])
 
 
-def registration_targets(root: Path, create: str = INSTRUCTION_FILES[0]) -> list[Path]:
+def registration_targets(root: Path, create: str | None = None) -> list[Path]:
     """The instruction files that carry the block, per the registration rule of the skill format.
 
     `create` names the file to create when the root has none of them; it changes nothing once one exists.
+    Without it, a repository whose only provider is Claude Code gets CLAUDE.md, and any other gets AGENTS.md.
     """
 
     agents, claude = (root / name for name in INSTRUCTION_FILES)
     targets = [agents] if agents.is_file() else []
     if claude.is_file() and not (targets and loads_agents_md(claude, agents)):
         targets.append(claude)
-    return targets or [root / create]
+    if targets:
+        return targets
+    if create is None:
+        in_use = [provider["id"] for provider in PROVIDERS
+                  if any((root / path).exists() for path in (*provider["detect"], provider["skills"]))]
+        create = "CLAUDE.md" if in_use == ["claude"] else "AGENTS.md"
+    return [root / create]
 
 
 def loads_agents_md(claude: Path, agents: Path) -> bool:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Register every skill of the skills directory in the repository's instruction file (AGENTS.md or CLAUDE.md).
+"""Register every skill of the skills folders in the repository's instruction file (AGENTS.md or CLAUDE.md).
 
 The registration rule is owned by ../references/skill-format.md#registration; this script applies it: it picks the
 instruction files, writes one generated block listing every skill, replaces that block when it exists and leaves
@@ -13,7 +13,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _common import (BLOCK, INSTRUCTION_FILES, SKILLS_DIR, SkillError, emit, registration_block,  # noqa: E402
+from _common import (BLOCK, INSTRUCTION_FILES, SkillError, emit, registration_block, skills_dirs,  # noqa: E402
                      registration_targets, resolve, shown)
 
 NEW_FILE_HEADING = "# Agent instructions"
@@ -38,8 +38,9 @@ def read(path: Path) -> str | None:
         return handle.read()
 
 
-def register(root: Path, skills_dir: str, create: str, check: bool) -> dict[str, object]:
-    block = registration_block(root, resolve(skills_dir, root))
+def register(root: Path, named_dirs: list[str] | None, create: str | None, check: bool) -> dict[str, object]:
+    skipped: list[str] = []
+    block = registration_block(root, [resolve(name, root) for name in skills_dirs(root, named_dirs)], skipped)
     files, stale = [], []
     for target in registration_targets(root, create):
         current = read(target)
@@ -55,14 +56,14 @@ def register(root: Path, skills_dir: str, create: str, check: bool) -> dict[str,
                 handle.write(text)
     if stale:
         return {"passed": False, "errors": stale}
-    return {"passed": True, "files": files}
+    return {"passed": True, "files": files, **({"skipped": skipped} if skipped else {})}
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--skills-dir", default=SKILLS_DIR, help=f"directory that holds the skills, relative to the root or absolute; default: {SKILLS_DIR}")
-    parser.add_argument("--create", choices=INSTRUCTION_FILES, default=INSTRUCTION_FILES[0],
-                        help=f"the file to create when the root has none of them; default: {INSTRUCTION_FILES[0]}")
+    parser.add_argument("--skills-dir", action="append", help="a skills folder, relative to the root; repeatable; default: the skills folder of every provider the repository uses")
+    parser.add_argument("--create", choices=INSTRUCTION_FILES,
+                        help="the file to create when the root has none of them; default: CLAUDE.md when Claude Code is the only provider in use, otherwise AGENTS.md")
     parser.add_argument("--check", action="store_true", help="write nothing; fail when a block is missing or out of date")
     parser.add_argument("--root", type=Path, default=Path.cwd(), help="root of the repository (default: the current directory)")
     args = parser.parse_args()
