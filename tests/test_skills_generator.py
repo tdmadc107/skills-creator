@@ -271,6 +271,11 @@ class NewSkillTests(Repository):
         reference.write_text(reference.read_text(encoding="utf-8") + "\nA new rule.\n", encoding="utf-8")
         errors = self.errors("--path", ".agents/skills/incident-report")
         self.assertTrue(any("the copy in .claude/skills/ differs" in error and "references/post-mortem-format.md" in error for error in errors), errors)
+        reference.write_text(reference.read_text(encoding="utf-8").replace("\nA new rule.\n", ""), encoding="utf-8")
+        # A Windows checkout gives one copy CRLF line endings, which is no difference.
+        entry = claude / "SKILL.md"
+        entry.write_bytes(entry.read_bytes().replace(b"\n", b"\r\n"))
+        self.assertEqual(self.errors("--path", ".agents/skills/incident-report", "--skip-registration"), [])
         shutil.rmtree(claude)
         errors = self.errors("--path", ".agents/skills/incident-report", "--skip-registration")
         self.assertTrue(any(".claude/skills/incident-report is missing" in error for error in errors), errors)

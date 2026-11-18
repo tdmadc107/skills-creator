@@ -112,7 +112,7 @@ A line of the template is one unit that is read on its own, such as a `Label: va
 
 A script in `scripts/` follows these conventions:
 
-- Python 3.9 or later, standard library only, run as `python -B <path>` from the repository root.
+- Python 3.9 or later, standard library only, run as `python -B <path>` from the repository root, or with `python3` where `python` is not on the PATH.
 - A module docstring that says what the script does and names the reference that owns its rules; the script fills only what a tool can compute and leaves every `<...>` placeholder to the agent.
 - Arguments through `argparse`, with `--root` for the repository root, so that a test can run it against a temporary directory.
 - Inputs are checked before anything is written, and one bad input writes nothing.

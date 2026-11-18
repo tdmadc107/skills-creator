@@ -30,7 +30,7 @@ This skill owns the order of the steps, the <artifact> format and the helper scr
 
 ## Procedure
 
-Run the commands from the repository root.
+Run the commands from the repository root; use `python3` where `python` is not on the PATH.
 
 1. **Open the run.** <What to read and apply before deciding anything>.
    Run the command below and keep the returned `run_ref` ([Opening the run]({{creator_rel}}/references/run-evaluation.md#opening-the-run)); from this step on, note each step and each decision with its basis ([Notes of the run]({{creator_rel}}/references/run-evaluation.md#notes-of-the-run)).

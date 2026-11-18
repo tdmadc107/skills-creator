@@ -9,6 +9,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 - The digest that `run_record.py start` returns leaves out the installer's `.install.json`, so it changes only when the rules of the skill change, and copies of a skill in different skills folders no longer differ by their manifest.
 - The README's steps to install without Node say to replace the packaged path in every file of each copy; a copy made without that step named `.agents/skills/skills-generator` in its commands and failed the validator.
+- The installer and the validator compare files with CRLF line endings read as LF, so a Windows checkout of committed copies no longer blocks every update or reports copies as different.
+- The installer stops when it runs in a subfolder of a Git repository, where agents would not find the skill, and names the root folder; `--root` still installs anywhere on purpose.
+- The procedure, the templates and the skill format say to run the scripts with `python3` where `python` is not on the PATH, as on macOS and many Linux systems.
 
 ## [2.0.0] - 2026-11-18
 
