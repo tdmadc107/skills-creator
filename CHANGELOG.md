@@ -3,6 +3,13 @@
 Every notable change to skills-generator is recorded here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- The digest that `run_record.py start` returns leaves out the installer's `.install.json`, so it changes only when the rules of the skill change, and copies of a skill in different skills folders no longer differ by their manifest.
+- The README's steps to install without Node say to replace the packaged path in every file of each copy; a copy made without that step named `.agents/skills/skills-generator` in its commands and failed the validator.
+
 ## [2.0.0] - 2026-11-18
 
 The skill moves from `.skills/` to the skills folders of the agent providers, so the installer and the scripts work differently.

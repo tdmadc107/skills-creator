@@ -4,7 +4,7 @@ description: "Creates or adjusts an agent skill in the standard skill format. Tu
 metadata:
   id: .agents/skills/skills-generator
   kind: skill
-  version: 2.0.0
+  version: 2.0.1
 ---
 
 # Skill creation

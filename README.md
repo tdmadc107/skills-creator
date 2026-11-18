@@ -128,7 +128,7 @@ Each copy holds an `.install.json`, the hashes that updates compare with; commit
 A provider you add later gets its copy on the next run.
 
 The installer needs Node 18 or later; the skill's scripts need Python 3.9 or later and nothing outside the standard library.
-Without Node, copy `.agents/skills/skills-generator/` into the skills folder of each provider and run `python -B <skills folder>/skills-generator/scripts/register_skills.py` at the root folder of the project.
+Without Node, copy `.agents/skills/skills-generator/` from the package into the skills folder of each provider, replace `.agents/skills/skills-generator` with the path of that copy in every file of the copy, then run `python -B <skills folder>/skills-generator/scripts/register_skills.py` at the root folder of the project.
 
 ---
 

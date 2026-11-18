@@ -1,6 +1,6 @@
 {
   "name": "skills-generator",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "An agent skill that creates other skills in one standard format, registers them in AGENTS.md or CLAUDE.md, and improves them from the records of their runs.",
   "keywords": [
     "agent-skills",

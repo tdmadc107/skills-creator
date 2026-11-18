@@ -461,6 +461,11 @@ class RecordTests(Repository):
         self.assertEqual(code, 1)
         self.assertIn("must end with the steps", result["errors"][0])
 
+    def test_the_digest_ignores_the_installer_manifest(self):
+        (self.root / ".agents/skills/work/.install.json").write_text('{"version": "9.9.9"}', encoding="utf-8")
+        code, opened = run("run_record.py", self.root, "start", "--skill", ".agents/skills/work")
+        self.assertEqual((code, opened["run_ref"]["digest"]), (0, self.ref["digest"]))
+
     def test_a_record_is_stored_as_one_line_and_kept_out_of_git(self):
         code, first = self.append(self.record())
         self.assertEqual(code, 0, first)

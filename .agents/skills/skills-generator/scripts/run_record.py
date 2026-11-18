@@ -40,10 +40,14 @@ PRIOR_FIX = re.compile(r"(.+)#(FIX-\d{2,})")
 
 
 def digest(skill: Path) -> str:
-    """A hash of every file of the skill folder, so a record names the exact rules its run applied."""
+    """A hash of every file of the skill folder, so a record names the exact rules its run applied.
+
+    The installer's manifest is left out: it changes with every install, while the rules may not.
+    """
 
     total = hashlib.sha256()
-    for path in sorted(item for item in skill.rglob("*") if item.is_file() and "__pycache__" not in item.parts):
+    for path in sorted(item for item in skill.rglob("*")
+                       if item.is_file() and "__pycache__" not in item.parts and item.name != ".install.json"):
         total.update(path.relative_to(skill).as_posix().encode("utf-8") + b"\0" + path.read_bytes() + b"\0")
     return total.hexdigest()[:12]
 
