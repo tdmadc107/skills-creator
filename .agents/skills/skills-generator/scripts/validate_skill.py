@@ -200,7 +200,6 @@ def validate(root: Path, path: Path, skip_registration: bool) -> list[str]:
         raise SkillError(f"{shown(path, root)} is neither a skill folder nor a directory of skills")
     parent = posix_dir(shown(skills[0].parent, root))
     dirs = skills_dirs(root)
-    # A skill outside the providers' skills folders is checked on its own, against its own folder.
     in_providers = parent in dirs
     errors = []
     for skill in skills:

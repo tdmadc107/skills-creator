@@ -27,8 +27,6 @@ class InputError(Exception):
 
 
 def shown(path: Path, root: Path) -> str:
-    """A path as the output names it: relative to the repository root when inside it, otherwise absolute."""
-
     return path.relative_to(root).as_posix() if path.is_relative_to(root) else path.as_posix()
 
 

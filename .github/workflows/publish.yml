@@ -1,6 +1,5 @@
 name: Publish to npm
 
-# Runs when a version tag is pushed, for example: git tag v1.0.0 && git push origin v1.0.0
 on:
   push:
     tags: ["v*"]
@@ -22,7 +21,7 @@ jobs:
     environment: npm
     permissions:
       contents: read
-      # Lets npm authenticate through trusted publishing (OIDC) once it is configured for the package.
+      # Trusted publishing (OIDC).
       id-token: write
     steps:
       - uses: actions/checkout@v6
@@ -59,7 +58,7 @@ jobs:
             echo "::error::this version is already on npm; bump the version before tagging"; exit 1
           fi
       - name: Publish
-        # NPM_TOKEN is needed only until trusted publishing is configured on npmjs.com; npm then uses OIDC.
+        # Needed only until trusted publishing is configured on npmjs.com.
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish --access public

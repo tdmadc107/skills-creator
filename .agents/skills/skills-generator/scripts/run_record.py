@@ -39,9 +39,6 @@ STEP_REF = re.compile(r"STEP-(\d{2,})")
 PRIOR_FIX = re.compile(r"(.+)#(FIX-\d{2,})")
 
 
-# ---------- the skill a run applies ----------
-
-
 def digest(skill: Path) -> str:
     """A hash of every file of the skill folder, so a record names the exact rules its run applied."""
 
@@ -63,9 +60,6 @@ def start(root: Path, skill_arg: str) -> dict[str, Any]:
         "recorded_steps": covered,
         "started_at": datetime.now().astimezone().isoformat(timespec="seconds"),
     }}
-
-
-# ---------- reading ----------
 
 
 def record_files(dirs: list[Path]) -> list[Path]:
@@ -94,9 +88,6 @@ def read_records(root: Path, dirs: list[Path]) -> tuple[list[dict[str, Any]], li
     # A stable sort keeps the file order of records written within the same second.
     records.sort(key=lambda record: str(record.get("recorded_at", "")))
     return records, errors
-
-
-# ---------- validation ----------
 
 
 def text(value: Any, label: str, errors: list[str]) -> str:
@@ -283,9 +274,6 @@ def check_stored(root: Path, dirs: list[Path]) -> tuple[list[dict[str, Any]], li
     return records, errors
 
 
-# ---------- commands ----------
-
-
 def append(root: Path, data: Any) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise SkillError("the input must be one JSON object")
@@ -313,7 +301,7 @@ def append(root: Path, data: Any) -> dict[str, Any]:
     target.parent.mkdir(parents=True, exist_ok=True)
     ignore = folder / ".gitignore"
     if not ignore.exists():
-        # Records describe the user's projects, so they stay out of Git until the user decides otherwise; an existing file is never changed.
+        # Records describe the user's projects; the user may change this file to share them, so it is never rewritten.
         with ignore.open("w", encoding="utf-8", newline="\n") as handle:
             handle.write("*\n")
     with target.open("a", encoding="utf-8", newline="\n") as handle:

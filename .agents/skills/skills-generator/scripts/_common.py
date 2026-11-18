@@ -15,9 +15,7 @@ SLUG = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
 SEMVER = re.compile(r"\d+\.\d+\.\d+")
 NAME_LIMIT = 64
 DESCRIPTION_LIMIT = 1024
-# The agent providers whose skills folder receives every skill, in the order their folders are listed.
-# A provider is in use when one of its `detect` paths, or its skills folder, exists at the repository root.
-# bin/skills-generator.mjs holds the same table for the installer, and a test keeps the two equal.
+# Same table as PROVIDERS in bin/skills-generator.mjs; a test keeps the two equal.
 PROVIDERS = (
     {"id": "agents", "label": "Codex CLI, Antigravity and other agents that read .agents/", "skills": ".agents/skills", "detect": (".agents", ".codex", ".agent")},
     {"id": "claude", "label": "Claude Code", "skills": ".claude/skills", "detect": (".claude", "CLAUDE.md")},
@@ -25,9 +23,7 @@ PROVIDERS = (
     {"id": "gemini", "label": "Gemini CLI", "skills": ".gemini/skills", "detect": (".gemini", "GEMINI.md")},
     {"id": "copilot", "label": "GitHub Copilot", "skills": ".github/skills", "detect": (".github/copilot-instructions.md", ".github/instructions")},
 )
-# The skills folder created when the repository uses no provider yet.
 DEFAULT_SKILLS_DIR = ".agents/skills"
-# The instruction files a skill is registered in, in the order they are looked for.
 INSTRUCTION_FILES = ("AGENTS.md", "CLAUDE.md")
 RESOURCE_FOLDERS = ("assets", "references", "scripts")
 BLOCK_START = "<!-- skills:start -->"
@@ -36,10 +32,8 @@ BLOCK = re.compile(re.escape(BLOCK_START) + r".*?" + re.escape(BLOCK_END), re.S)
 FENCE = re.compile(r"(?ms)^[ \t]*(`{3,}|~{3,})[^\n]*\n.*?^[ \t]*\1[ \t]*$")
 HEADING = re.compile(r"(?m)^(#{1,6}) (.+?)\s*$")
 STEP = re.compile(r"(?m)^(\d+)\. (.*)$")
-# The tool that opens and records every run of a skill, and the folder of each skills folder that keeps the records.
 RECORD_TOOL = "run_record.py"
 RECORDS = ".records"
-# The two steps that end every procedure, in this order; a record covers every step before them.
 CLOSING_STEPS = ("Evaluate and record", "Report")
 STEP_NAME = re.compile(r"\*\*([^*]+?)\.?\*\*")
 
@@ -49,8 +43,6 @@ class SkillError(Exception):
 
 
 def emit(result: dict[str, Any]) -> int:
-    """Print the result as JSON and return the exit code that matches it."""
-
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     print(json.dumps(result, ensure_ascii=False, indent=2))
@@ -58,8 +50,6 @@ def emit(result: dict[str, Any]) -> int:
 
 
 def shown(path: Path, root: Path) -> str:
-    """A path as the output names it: relative to the repository root when inside it, otherwise absolute."""
-
     return path.relative_to(root).as_posix() if path.is_relative_to(root) else path.as_posix()
 
 
@@ -121,7 +111,6 @@ def parse_frontmatter(text: str, where: str) -> tuple[dict[str, Any], str]:
         if not separator or not key or (raw and not raw.startswith(" ")):
             raise SkillError(f"{spot}: expected `key: value`")
         if BLOCK_SCALAR.fullmatch(raw.strip()):
-            # A block value: the more indented lines below, folded into one line by `>` or kept as lines by `|`.
             own = len(line) - len(line.lstrip())
             block = []
             while number < end and (not lines[number].strip() or len(lines[number]) - len(lines[number].lstrip()) > own):
@@ -212,8 +201,6 @@ def skills_dirs(root: Path, named: list[str] | None = None) -> list[str]:
 
 
 def skill_folders(skills_dir: Path) -> list[Path]:
-    """Every folder of one skills folder that holds a SKILL.md, by name."""
-
     if not skills_dir.is_dir():
         return []
     return sorted(folder for folder in skills_dir.iterdir() if (folder / "SKILL.md").is_file())
@@ -226,7 +213,6 @@ def registration_block(root: Path, dirs: list[Path], skipped: list[str] | None =
     one skill the user wrote in another form does not keep the others from being listed.
     """
 
-    # A provider's skills folder that does not exist yet holds no skill to list and is not named.
     dirs = [skills_dir for skills_dir in dirs if skills_dir.is_dir()]
     rows: dict[str, str] = {}
     for skills_dir in dirs:

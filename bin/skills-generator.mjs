@@ -1,8 +1,5 @@
 #!/usr/bin/env node
-// Installs the skills-generator skill into the skills folder of every agent provider a repository uses, registers it
-// in AGENTS.md or CLAUDE.md, and updates every copy later without overwriting the improvements that the evaluation of
-// its runs made in that repository. Needs only Node; the registration runs the skill's own Python script, which needs
-// Python 3.9 or later.
+// Installs skills-generator into the skills folder of every agent provider a project uses, and updates every copy.
 
 import { spawnSync } from "node:child_process";
 import crypto from "node:crypto";
@@ -13,12 +10,10 @@ import { fileURLToPath } from "node:url";
 const SOURCE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PACKAGE = JSON.parse(fs.readFileSync(path.join(SOURCE, "package.json"), "utf8"));
 const SKILL = "skills-generator";
-// Where the package keeps the skill; the paths the skill names to itself start with this folder.
+// The paths the packaged skill names to itself start with this folder; each copy gets its own folder instead.
 const SOURCE_DIR = ".agents/skills";
 const SKILL_SOURCE = path.join(SOURCE, ...SOURCE_DIR.split("/"), SKILL);
-// The agent providers whose skills folder receives a copy of the skill, in the order the folders are listed.
-// A provider is in use when one of its `detect` paths, or its skills folder, exists at the repository root.
-// scripts/_common.py of the skill holds the same table for the skill's scripts, and a test keeps the two equal.
+// Same table as PROVIDERS in the skill's scripts/_common.py; a test keeps the two equal.
 const PROVIDERS = [
   { id: "agents", label: "Codex CLI, Antigravity and other agents that read .agents/", skills: ".agents/skills", detect: [".agents", ".codex", ".agent"] },
   { id: "claude", label: "Claude Code", skills: ".claude/skills", detect: [".claude", "CLAUDE.md"] },
@@ -26,11 +21,10 @@ const PROVIDERS = [
   { id: "gemini", label: "Gemini CLI", skills: ".gemini/skills", detect: [".gemini", "GEMINI.md"] },
   { id: "copilot", label: "GitHub Copilot", skills: ".github/skills", detect: [".github/copilot-instructions.md", ".github/instructions"] },
 ];
-// The skills folder created when the repository uses no provider yet.
 const DEFAULT_SKILLS_DIR = ".agents/skills";
-// The folder where version 1.0.0 installed the skill; a copy there is reported, never touched.
+// Where version 1.0.0 installed the skill; a copy there is reported, never touched.
 const LEGACY_DIR = ".skills";
-// Written into each installed copy: the package, its version and the hash of every file as installed.
+// Hashes of the files as installed, which updates compare with.
 const MANIFEST = ".install.json";
 const INSTRUCTION_FILES = ["AGENTS.md", "CLAUDE.md"];
 const SKIPPED = new Set(["__pycache__", MANIFEST]);
@@ -76,29 +70,23 @@ function parseArgs(argv) {
 
 const sha = (data) => crypto.createHash("sha256").update(data).digest("hex");
 
-/**
- * The providers the project uses: one of their detect paths, or their skills folder, exists at the root.
- * `added` names files about to be created, which count as present.
- */
+/** `added`: files about to be created, which count as present. */
 function providersInUse(root, added = []) {
   const present = (rel) => added.includes(rel) || fs.existsSync(path.join(root, rel));
   return PROVIDERS.filter((provider) => [...provider.detect, provider.skills].some(present));
 }
 
-/** The skills folders of the project, relative to its root: every provider's in use, or the default one. */
 function skillsDirs(root, added = []) {
   const unique = [...new Set(providersInUse(root, added).map((provider) => provider.skills))];
   return unique.length ? unique : [DEFAULT_SKILLS_DIR];
 }
 
-/** The instruction file to create when the root has none: the one a Claude-only project reads, otherwise AGENTS.md. */
 function fileToCreate(opts) {
   if (opts.create) return opts.create;
   const ids = providersInUse(opts.root).map((provider) => provider.id);
   return ids.length === 1 && ids[0] === "claude" ? "CLAUDE.md" : "AGENTS.md";
 }
 
-/** Every file of a skill folder, as posix paths relative to it, without caches and the manifest. */
 function filesOf(folder) {
   const out = [];
   const walk = (rel) => {
@@ -113,7 +101,6 @@ function filesOf(folder) {
   return out.sort();
 }
 
-/** The package's files as they are written into one skills folder: the paths the skill names to itself point there. */
 function packagedFiles(skillsDir) {
   const own = `${SOURCE_DIR}/${SKILL}`;
   const target = `${skillsDir}/${SKILL}`;
@@ -154,7 +141,6 @@ function python() {
   return null;
 }
 
-/** Run the skill's own registration; when it cannot run, say which command registers the skill later. */
 function register(opts, skillsDir) {
   const script = `${skillsDir}/${SKILL}/scripts/register_skills.py`;
   const args = ["--create", opts.create];
@@ -179,12 +165,7 @@ function register(opts, skillsDir) {
   for (const reason of output.skipped || []) console.warn(`note: not listed in the instruction file: ${reason}`);
 }
 
-/**
- * Copy each skill of the skill format that a skills folder lacks from a folder that has it, so that every provider
- * holds every such skill, as when a provider is added after skills were created. The copy names its own folder in
- * place of the source's. A skill of another form, which the user wrote for one provider, is left where it is, and an
- * existing folder is never overwritten.
- */
+/** Every provider holds every skill of the format; a skill of another form stays where the user put it. */
 function copyMissingSkills(opts, dirs) {
   const sources = new Map();
   for (const dir of dirs) {
@@ -195,7 +176,7 @@ function copyMissingSkills(opts, dirs) {
       const entryPoint = path.join(base, entry.name, "SKILL.md");
       if (!fs.existsSync(entryPoint)) continue;
       const text = fs.readFileSync(entryPoint, "utf8");
-      // Only a skill of the format: `metadata.kind: skill` and a `metadata.id` that is its own path.
+      // A skill of the format: `metadata.kind: skill` and a `metadata.id` that is its own path.
       if (/^  kind: skill$/m.test(text) && new RegExp(`^  id: ${`${dir}/${entry.name}`.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "m").test(text)) {
         sources.set(entry.name, dir);
       }
@@ -215,7 +196,6 @@ function copyMissingSkills(opts, dirs) {
   }
 }
 
-/** What one skills folder needs: a new copy, or an update of the copy this package installed. */
 function planFolder(opts, skillsDir) {
   const folder = path.join(opts.root, ...skillsDir.split("/"), SKILL);
   const files = packagedFiles(skillsDir);
@@ -251,11 +231,11 @@ function applyFolder(opts, plan) {
   else console.log(`Installed ${SKILL} ${PACKAGE.version} in ${where}`);
 }
 
-/** Install or update the copy in every skills folder; when one copy is blocked, change nothing anywhere. */
+/** When one copy is blocked, nothing changes anywhere. */
 function installOrUpdate(opts) {
-  // Decided before installing, since the new skills folders make every provider look in use afterwards.
+  // Decided before installing: the new skills folders would make their providers look in use, and a CLAUDE.md
+  // about to be created puts Claude Code in use.
   opts.create = fileToCreate(opts);
-  // The registration creates that file when the root has no instruction file, and CLAUDE.md puts Claude Code in use.
   const created = INSTRUCTION_FILES.some((name) => fs.existsSync(path.join(opts.root, name))) ? [] : [opts.create];
   const plans = skillsDirs(opts.root, created).map((skillsDir) => planFolder(opts, skillsDir));
   const blocked = plans.filter((plan) => plan.blocking.length);

@@ -1,4 +1,3 @@
-// Tests of the npm installer and of the package contents. Run with: node --test tests/installer.test.mjs
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -58,14 +57,12 @@ test("a project with no provider gets .agents/skills and AGENTS.md, and the inst
   assert.match(fs.readFileSync(path.join(root, "AGENTS.md"), "utf8"), /\| \[`skills-generator`\]\(\.agents\/skills\/skills-generator\/SKILL\.md\) \|/);
   assert.deepEqual(validate(root, ".agents/skills/skills-generator"), { passed: true, path: ".agents/skills/skills-generator" });
 
-  // A second run updates in place instead of failing.
   const again = cli(root);
   assert.equal(again.code, 0, again.err);
   assert.match(again.out, /Updated \.agents\/skills\/skills-generator\/ from .* 0 file\(s\) written, 0 removed/);
   assert.deepEqual(fs.readdirSync(root).sort(), [".agents", "AGENTS.md"]);
 });
 
-/** Validate every skill of one skills folder with the copy of skills-generator in it. */
 function validateFolder(root, dir) {
   return validate(root, `${dir}/skills-generator`, dir);
 }
@@ -127,7 +124,6 @@ test("a provider added later gets every skill of the format, and a skill of anot
   assert.match(fs.readFileSync(path.join(root, ".cursor/skills/release-notes/SKILL.md"), "utf8"), /^  id: \.cursor\/skills\/release-notes$/m);
   assert.match(fs.readFileSync(path.join(root, "CLAUDE.md"), "utf8"), /\| \[`my-review`\]\(\.claude\/skills\/my-review\/SKILL\.md\) \| Reviews a pull request\. Use when asked\. \|/);
   assert.equal(validate(root, ".claude/skills/skills-generator", ".claude/skills/release-notes").passed, true);
-  // A second run copies nothing again.
   assert.doesNotMatch(cli(root).out, /Copied/);
 });
 
@@ -176,7 +172,6 @@ test("a later run keeps the files changed in the repository unless --force", { s
   assert.equal(unchanged.code, 0, unchanged.err);
   assert.match(unchanged.out, /0 file\(s\) written, 0 removed/);
 
-  // An improvement made in the repository blocks the update and is left as it is.
   const writing = path.join(folder, "references/writing-rules.md");
   fs.appendFileSync(writing, "\nA local improvement.\n");
   const blocked = cli(root);

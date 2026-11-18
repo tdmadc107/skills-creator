@@ -71,8 +71,6 @@ def fill(folder: Path) -> None:
 
 
 class Repository(unittest.TestCase):
-    """A temporary repository that receives skills."""
-
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
@@ -113,14 +111,12 @@ class PackageTests(unittest.TestCase):
         self.assertEqual(len(jobs), 5)
 
     def test_the_changelog_describes_the_current_version(self):
-        # Until a release, the entries wait under Unreleased; publish.yml then requires a dated heading for the version.
         text = (REPO / "CHANGELOG.md").read_text(encoding="utf-8")
         version = re.search(r"^  version: (\S+)$", (SKILL / "SKILL.md").read_text(encoding="utf-8"), re.M).group(1)
         headings = re.findall(r"(?m)^## \[([^\]]+)\](?: - (\d{4}-\d{2}-\d{2}))?$", text)
         self.assertTrue(headings, "the changelog has no version heading")
         self.assertIn(headings[0][0], ("Unreleased", version), "the newest heading is Unreleased or the current version")
         self.assertTrue(all(date for name, date in headings if name != "Unreleased"), "every released version has a date")
-        # Each released version links to its tag, as a reference definition at the end of the file.
         links = dict(re.findall(r"(?m)^\[([^\]]+)\]: (\S+)$", text))
         for name, _ in headings:
             if name != "Unreleased":
@@ -140,7 +136,6 @@ class PackageTests(unittest.TestCase):
         self.assertIn(f'const DEFAULT_SKILLS_DIR = "{DEFAULT_SKILLS_DIR}";', installer)
 
     def test_the_format_reference_names_every_path_that_puts_a_provider_in_use(self):
-        # The table is what a reader checks; it must say what the code detects, the skills folder included.
         sys.path.insert(0, str(SCRIPTS))
         try:
             from _common import PROVIDERS
@@ -190,7 +185,6 @@ class NewSkillTests(Repository):
         self.assertTrue(any("placeholder" in error for error in self.errors("--path", result["path"], "--skip-registration")))
         fill(self.root / result["path"])
         self.assertEqual(self.errors("--path", result["path"], "--skip-registration"), [])
-        # The scaffolded skill opens its run with the record tool, at the path the template filled in.
         text = (self.root / result["path"] / "SKILL.md").read_text(encoding="utf-8")
         command = re.search(r"python -B (\S+run_record\.py) start --skill (\S+)", text)
         self.assertEqual(command.groups(), (".agents/skills/skills-generator/scripts/run_record.py", ".agents/skills/release-notes"))
@@ -241,7 +235,6 @@ class NewSkillTests(Repository):
         self.assertFalse((self.root / ".agents/skills/report/assets").exists())
 
     def test_skills_folder_can_be_named(self):
-        # A named folder needs its own copy of skills-generator, which the new skill's steps run.
         code, result = self.new_skill("--name", "report", "--size", "thin", "--skills-dir", "tools/skills")
         self.assertEqual(code, 1)
         self.assertIn("tools/skills/skills-generator is missing", result["errors"][0])
@@ -274,7 +267,6 @@ class NewSkillTests(Repository):
         self.assertEqual(run("register_skills.py", self.root)[0], 0)
         self.assertEqual(self.errors("--path", ".agents/skills"), [])
         self.assertEqual(self.errors("--path", ".claude/skills"), [])
-        # A change made in one copy only is reported until every copy has it.
         reference = claude / "references/post-mortem-format.md"
         reference.write_text(reference.read_text(encoding="utf-8") + "\nA new rule.\n", encoding="utf-8")
         errors = self.errors("--path", ".agents/skills/incident-report")
@@ -311,7 +303,6 @@ class RegistrationTests(Repository):
         # CLAUDE.md puts Claude Code in use, so its skills folder needs the skill too.
         errors = self.errors("--path", ".agents/skills/alpha")
         self.assertTrue(any(".claude/skills/alpha is missing" in error for error in errors), errors)
-        # Once a file exists the rule picks it, whatever file is named.
         self.assertEqual(self.register("--create", "AGENTS.md"), {"CLAUDE.md": "unchanged"})
         self.assertFalse((self.root / "AGENTS.md").exists())
 
@@ -465,7 +456,6 @@ class RecordTests(Repository):
         entry.write_text(entry.read_text(encoding="utf-8").replace("Read the inputs.", "Read every input."), encoding="utf-8")
         self.assertNotEqual(run("run_record.py", self.root, "start", "--skill", ".agents/skills/work")[1]["run_ref"]["digest"], self.ref["digest"])
         self.assertEqual(run("run_record.py", self.root, "start", "--skill", ".agents/skills/missing")[0], 1)
-        # A procedure that does not end with the two closing steps gives no number of steps to record.
         entry.write_text(entry.read_text(encoding="utf-8").replace("**Evaluate and record.**", "**Record.**"), encoding="utf-8")
         code, result = run("run_record.py", self.root, "start", "--skill", ".agents/skills/work")
         self.assertEqual(code, 1)
@@ -485,7 +475,6 @@ class RecordTests(Repository):
         self.assertEqual([json.loads(line)["record_id"] for line in lines], [first["record_id"], second["record_id"]])
         self.assertEqual(json.loads(lines[0])["schema"], "skill-record/v1")
         self.assertEqual(run("run_record.py", self.root, "check")[1], {"passed": True, "records": 2})
-        # The records folder is not a skill: registration and validation ignore it.
         self.assertEqual(run("register_skills.py", self.root)[0], 0)
         self.assertEqual(self.errors("--path", ".agents/skills"), [])
 
@@ -548,7 +537,6 @@ class RecordTests(Repository):
         shutil.copytree(self.root / ".agents/skills/work", claude / "work")
         code, opened = run("run_record.py", self.root, "start", "--skill", ".claude/skills/work")
         self.assertEqual(code, 0, opened)
-        # A run of the Claude Code copy names a fix recorded by a run of the other copy.
         again = self.with_issue(cause="ineffective_fix", prior_fix=f"{first['record_id']}#FIX-01")
         again["run_ref"] = opened["run_ref"]
         code, second = self.append(again)
